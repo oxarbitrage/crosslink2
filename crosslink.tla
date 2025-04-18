@@ -24,12 +24,12 @@ variables
     finalizedHeight = 1
 define
     Invariant_FinalizedHeightConsistent ==
-        \E i \in 1..Len(blocks): blocks[i].height = finalizedHeight /\ blocks[i].finalized = TRUE
-        /\ \A j \in 1..Len(blocks): blocks[j].finalized = TRUE => blocks[j].height <= finalizedHeight
+        ∃ i ∈ 1..Len(blocks): blocks[i].height = finalizedHeight ∧ blocks[i].finalized = TRUE
+        ∧ ∀ j ∈ 1..Len(blocks): blocks[j].finalized = TRUE ⇒ blocks[j].height ≤ finalizedHeight
     Invariant_ContiguousFinality ==
-        \A i \in 1..Len(blocks): (blocks[i].height < finalizedHeight) => blocks[i].finalized = TRUE
+        ∀ i ∈ 1..Len(blocks): (blocks[i].height < finalizedHeight) ⇒ blocks[i].finalized = TRUE
     Invariant_ContextMonotonic ==
-        \A k \in 2..Len(blocks): blocks[k].context_bft >= blocks[k-1].context_bft
+        ∀ k ∈ 2..Len(blocks): blocks[k].context_bft ≥ blocks[k-1].context_bft
 end define;
 
 \* Miner processes
@@ -85,18 +85,18 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "fbcec72b" /\ chksum(tla) = "29e211fa")
+\* BEGIN TRANSLATION (chksum(pcal) = "e789066" /\ chksum(tla) = "6c0dd62e")
 CONSTANT defaultInitValue
 VARIABLES pc, blocks, currentHeight, finalizedHeight
 
 (* define statement *)
 Invariant_FinalizedHeightConsistent ==
-    \E i \in 1..Len(blocks): blocks[i].height = finalizedHeight /\ blocks[i].finalized = TRUE
-    /\ \A j \in 1..Len(blocks): blocks[j].finalized = TRUE => blocks[j].height <= finalizedHeight
+    ∃ i ∈ 1..Len(blocks): blocks[i].height = finalizedHeight ∧ blocks[i].finalized = TRUE
+    ∧ ∀ j ∈ 1..Len(blocks): blocks[j].finalized = TRUE ⇒ blocks[j].height ≤ finalizedHeight
 Invariant_ContiguousFinality ==
-    \A i \in 1..Len(blocks): (blocks[i].height < finalizedHeight) => blocks[i].finalized = TRUE
+    ∀ i ∈ 1..Len(blocks): (blocks[i].height < finalizedHeight) ⇒ blocks[i].finalized = TRUE
 Invariant_ContextMonotonic ==
-    \A k \in 2..Len(blocks): blocks[k].context_bft >= blocks[k-1].context_bft
+    ∀ k ∈ 2..Len(blocks): blocks[k].context_bft ≥ blocks[k-1].context_bft
 
 VARIABLES newHeight, newParentHeight, newContext, targetHeight
 
