@@ -15,24 +15,19 @@ CONSTANT Validators
 (*--algorithm crosslink
 
 variables 
-    \* Initialize blockchain with genesis block at height 0.
+    \* Initialize blockchain with genesis block at height 1.
     \* We consider genesis finalized by default (finalized = TRUE) and its context_bft = 1.
     blocks = << [height |-> 1, parent |-> 0, context_bft |-> 1, finalized |-> TRUE] >>,
-    \* Height of the current tip of the chain (initially 0 at genesis).
+    \* Height of the current tip of the chain (initially 1 at genesis).
     currentHeight = 1,
-    \* Height of the latest finalized block (genesis is finalized at 0).
+    \* Height of the latest finalized block (genesis is finalized at 1).
     finalizedHeight = 1
 define
-    \* Invariant: finalizedHeight is the height of a block that is finalized, and no higher block is marked final.
     Invariant_FinalizedHeightConsistent ==
         \E i \in 1..Len(blocks): blocks[i].height = finalizedHeight /\ blocks[i].finalized = TRUE
         /\ \A j \in 1..Len(blocks): blocks[j].finalized = TRUE => blocks[j].height <= finalizedHeight
-
-    \* Invariant: all blocks up to finalizedHeight are finalized (no gap in final prefix).
     Invariant_ContiguousFinality ==
         \A i \in 1..Len(blocks): (blocks[i].height < finalizedHeight) => blocks[i].finalized = TRUE
-
-    \* Invariant: context_bft is non-decreasing along the chain (no block has context lower than its parent).
     Invariant_ContextMonotonic ==
         \A k \in 2..Len(blocks): blocks[k].context_bft >= blocks[k-1].context_bft
 end define;
@@ -45,7 +40,7 @@ variables
     newContext
 begin
     MineAndCommit:
-        while (currentHeight < MaxHeight) do
+        while currentHeight < MaxHeight do
             \* Determine new block properties
             newHeight := currentHeight + 1;
             \* parent is the tip's height
@@ -72,13 +67,14 @@ begin
     FinalizeLoop:
         while (TRUE) do
             \* Check if the next block to finalize (finalizedHeight+1) is Sigma-deep
-            if (currentHeight - (finalizedHeight + 1)) >= Sigma then
-                \* The block at height (finalizedHeight+1) exists and has >= Sigma confirmations
+            if currentHeight - (finalizedHeight + 1) >= Sigma then
+                \* The block at height (finalizedHeight+1) exists and has >= Sigma confirmations.
+                \* TODO: Voting logic to finalize the block, for now we just finalize it.
                 targetHeight := finalizedHeight + 1;
                 blocks[targetHeight].finalized := TRUE;
                 finalizedHeight := targetHeight;
             end if;
-            if ( currentHeight = MaxHeight /\ (currentHeight - (finalizedHeight)) <= Sigma ) then
+            if currentHeight = MaxHeight /\ (currentHeight - finalizedHeight) <= Sigma then
                 \* Chain stopped growing and no further finalization possible (tail not deep enough)
                 goto Ending;
             end if;
@@ -89,7 +85,7 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "a6e5aab9" /\ chksum(tla) = "f18eb97f")
+\* BEGIN TRANSLATION (chksum(pcal) = "fbcec72b" /\ chksum(tla) = "29e211fa")
 CONSTANT defaultInitValue
 VARIABLES pc, blocks, currentHeight, finalizedHeight
 
@@ -97,12 +93,8 @@ VARIABLES pc, blocks, currentHeight, finalizedHeight
 Invariant_FinalizedHeightConsistent ==
     \E i \in 1..Len(blocks): blocks[i].height = finalizedHeight /\ blocks[i].finalized = TRUE
     /\ \A j \in 1..Len(blocks): blocks[j].finalized = TRUE => blocks[j].height <= finalizedHeight
-
-
 Invariant_ContiguousFinality ==
     \A i \in 1..Len(blocks): (blocks[i].height < finalizedHeight) => blocks[i].finalized = TRUE
-
-
 Invariant_ContextMonotonic ==
     \A k \in 2..Len(blocks): blocks[k].context_bft >= blocks[k-1].context_bft
 
@@ -127,7 +119,7 @@ Init == (* Global variables *)
                                         [] self \in Validators -> "FinalizeLoop"]
 
 MineAndCommit(self) == /\ pc[self] = "MineAndCommit"
-                       /\ IF (currentHeight < MaxHeight)
+                       /\ IF currentHeight < MaxHeight
                              THEN /\ newHeight' = [newHeight EXCEPT ![self] = currentHeight + 1]
                                   /\ newParentHeight' = [newParentHeight EXCEPT ![self] = currentHeight]
                                   /\ newContext' = [newContext EXCEPT ![self] = finalizedHeight]
@@ -148,14 +140,14 @@ MineAndCommit(self) == /\ pc[self] = "MineAndCommit"
 Miner(self) == MineAndCommit(self)
 
 FinalizeLoop(self) == /\ pc[self] = "FinalizeLoop"
-                      /\ IF (currentHeight - (finalizedHeight + 1)) >= Sigma
+                      /\ IF currentHeight - (finalizedHeight + 1) >= Sigma
                             THEN /\ targetHeight' = [targetHeight EXCEPT ![self] = finalizedHeight + 1]
                                  /\ blocks' = [blocks EXCEPT ![targetHeight'[self]].finalized = TRUE]
                                  /\ finalizedHeight' = targetHeight'[self]
                             ELSE /\ TRUE
                                  /\ UNCHANGED << blocks, finalizedHeight, 
                                                  targetHeight >>
-                      /\ IF ( currentHeight = MaxHeight /\ (currentHeight - (finalizedHeight')) <= Sigma )
+                      /\ IF currentHeight = MaxHeight /\ (currentHeight - finalizedHeight') <= Sigma
                             THEN /\ pc' = [pc EXCEPT ![self] = "Ending"]
                             ELSE /\ pc' = [pc EXCEPT ![self] = "FinalizeLoop"]
                       /\ UNCHANGED << currentHeight, newHeight, 
@@ -163,9 +155,9 @@ FinalizeLoop(self) == /\ pc[self] = "FinalizeLoop"
 
 Ending(self) == /\ pc[self] = "Ending"
                 /\ Assert(currentHeight = MaxHeight, 
-                          "Failure of assertion at line 87, column 9.")
+                          "Failure of assertion at line 83, column 9.")
                 /\ Assert(finalizedHeight = MaxHeight - Sigma, 
-                          "Failure of assertion at line 88, column 9.")
+                          "Failure of assertion at line 84, column 9.")
                 /\ pc' = [pc EXCEPT ![self] = "Done"]
                 /\ UNCHANGED << blocks, currentHeight, finalizedHeight, 
                                 newHeight, newParentHeight, newContext, 
