@@ -35,11 +35,11 @@ define
     Invariant_ContextMonotonic ==
         ∀ k ∈ 2..Len(blocks): blocks[k].context_bft ≥ blocks[k-1].context_bft
     Invariant_StalledCorrect == stalled = (currentHeight - finalizedHeight > L)
-    Invariant_LNonDeadlock == L >= Sigma
+    Invariant_LNonDeadlock == L ≥ Sigma
 end define;
 
 \* Miner processes
-process Miner \in Miners
+process Miner ∈ Miners
 variables
     newHeight,
     newParentHeight,
@@ -51,7 +51,6 @@ begin
             if stalled then
                 await stalled = FALSE;
             end if;
-
             \* Determine new block properties
             newHeight := currentHeight + 1;
             \* parent is the tip's height
@@ -70,7 +69,7 @@ begin
 end process;
 
 \* Finality Validator processes
-process Validator \in Validators
+process Validator ∈ Validators
 variables
     \* Height of the block to be finalized
     targetHeight,
@@ -82,19 +81,17 @@ begin
                 await stalled = FALSE;
             end if;
             \* Check if the next block to finalize (finalizedHeight+1) is Sigma-deep
-            if currentHeight - (finalizedHeight + 1) >= Sigma then
+            if currentHeight - (finalizedHeight + 1) ≥ Sigma then
                 \* The block at height (finalizedHeight+1) exists and has >= Sigma confirmations.
                 \* TODO: Voting logic to finalize the block, for now we just finalize it.
                 targetHeight := finalizedHeight + 1;
                 blocks[targetHeight].finalized := TRUE;
                 finalizedHeight := targetHeight;
             end if;
-            
             \* Update stalled mode based on gap
             stalled := (currentHeight - finalizedHeight) > L;
-
             \* Termination condition
-            if currentHeight = MaxHeight /\ (currentHeight - finalizedHeight) <= Sigma then
+            if currentHeight = MaxHeight ∧ (currentHeight - finalizedHeight) ≤ Sigma then
                 \* Chain stopped growing and no further finalization possible (tail not deep enough)
                 goto Ending;
             end if;
@@ -105,7 +102,7 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "5243688f" /\ chksum(tla) = "262fe47d")
+\* BEGIN TRANSLATION (chksum(pcal) = "8ae0788e" /\ chksum(tla) = "f94a3e92")
 CONSTANT defaultInitValue
 VARIABLES pc, blocks, currentHeight, finalizedHeight, stalled
 
@@ -118,7 +115,7 @@ Invariant_ContiguousFinality ==
 Invariant_ContextMonotonic ==
     ∀ k ∈ 2..Len(blocks): blocks[k].context_bft ≥ blocks[k-1].context_bft
 Invariant_StalledCorrect == stalled = (currentHeight - finalizedHeight > L)
-Invariant_LNonDeadlock == L >= Sigma
+Invariant_LNonDeadlock == L ≥ Sigma
 
 VARIABLES newHeight, newParentHeight, newContext, targetHeight
 
@@ -169,7 +166,7 @@ FinalizeLoop(self) == /\ pc[self] = "FinalizeLoop"
                       /\ IF stalled
                             THEN /\ stalled = FALSE
                             ELSE /\ TRUE
-                      /\ IF currentHeight - (finalizedHeight + 1) >= Sigma
+                      /\ IF currentHeight - (finalizedHeight + 1) ≥ Sigma
                             THEN /\ targetHeight' = [targetHeight EXCEPT ![self] = finalizedHeight + 1]
                                  /\ blocks' = [blocks EXCEPT ![targetHeight'[self]].finalized = TRUE]
                                  /\ finalizedHeight' = targetHeight'[self]
@@ -177,7 +174,7 @@ FinalizeLoop(self) == /\ pc[self] = "FinalizeLoop"
                                  /\ UNCHANGED << blocks, finalizedHeight, 
                                                  targetHeight >>
                       /\ stalled' = ((currentHeight - finalizedHeight') > L)
-                      /\ IF currentHeight = MaxHeight /\ (currentHeight - finalizedHeight') <= Sigma
+                      /\ IF currentHeight = MaxHeight ∧ (currentHeight - finalizedHeight') ≤ Sigma
                             THEN /\ pc' = [pc EXCEPT ![self] = "Ending"]
                             ELSE /\ pc' = [pc EXCEPT ![self] = "FinalizeLoop"]
                       /\ UNCHANGED << currentHeight, newHeight, 
@@ -185,9 +182,9 @@ FinalizeLoop(self) == /\ pc[self] = "FinalizeLoop"
 
 Ending(self) == /\ pc[self] = "Ending"
                 /\ Assert(currentHeight = MaxHeight, 
-                          "Failure of assertion at line 103, column 9.")
+                          "Failure of assertion at line 100, column 9.")
                 /\ Assert(finalizedHeight = MaxHeight - Sigma, 
-                          "Failure of assertion at line 104, column 9.")
+                          "Failure of assertion at line 101, column 9.")
                 /\ pc' = [pc EXCEPT ![self] = "Done"]
                 /\ UNCHANGED << blocks, currentHeight, finalizedHeight, 
                                 stalled, newHeight, newParentHeight, 
