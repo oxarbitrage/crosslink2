@@ -33,16 +33,18 @@ variables
     \* Map of validators' votes
     votes = [v ∈ Validators |-> FALSE]
 define
-    Invariant_FinalizedHeightConsistent ==
+    FinalizedHeightConsistent ==
         ∃ i ∈ 1..Len(blocks): blocks[i].height = finalizedHeight ∧ blocks[i].finalized = TRUE
         ∧ ∀ j ∈ 1..Len(blocks): blocks[j].finalized = TRUE ⇒ blocks[j].height ≤ finalizedHeight
-    Invariant_ContiguousFinality ==
+    ContiguousFinality ==
         ∀ i ∈ 1..Len(blocks): (blocks[i].height < finalizedHeight) ⇒ blocks[i].finalized = TRUE
-    Invariant_ContextMonotonic ==
+    ContextMonotonic ==
         ∀ k ∈ 2..Len(blocks): blocks[k].context_bft ≥ blocks[k-1].context_bft
-    Invariant_StalledCorrect == stalled = (currentHeight - finalizedHeight > L)
-    Invariant_LNonDeadlock == L ≥ Sigma
-    Invariant_VoteThresholdBound == VoteThreshold ≤ Cardinality(Validators)
+    StalledCorrect == stalled = (currentHeight - finalizedHeight > L)
+    LNonDeadlock == L ≥ Sigma
+    VoteThresholdBound == VoteThreshold ≤ Cardinality(Validators)
+    VoteMapReset == votingHeight = 0 ⇒ votes = [ v ∈ Validators |-> FALSE ]
+    VotesOnlyDuringVoting == ∃ v ∈ Validators: votes[v] = TRUE ⇒ votingHeight ≠ 0
 end define;
 
 \* Miner processes
@@ -80,6 +82,7 @@ process Validator ∈ Validators
 variables
     \* Height of the block to be finalized
     targetHeight,
+    voteCount,
 begin
     Finalizer:
         while (TRUE) do
@@ -87,21 +90,26 @@ begin
             if stalled then
                 await stalled = FALSE;
             end if;
-            \* Single voting step: only one votes[] update per iteration
-            if votingHeight = 0 ∧ (currentHeight - (finalizedHeight + 1) ≥ Sigma) then
-                \* Start a new round of voting
+
+            \* Tally number of votes
+            voteCount := Cardinality({ v ∈ Validators : votes[v] = TRUE });
+
+            \* 1) If no round in progress and block is σ‐deep, start round
+            if votingHeight = 0 ∧ currentHeight - (finalizedHeight + 1) ≥ Sigma then
                 votingHeight := finalizedHeight + 1;
-                votes := [v ∈ Validators |-> FALSE];
-            elsif votingHeight # 0 ∧ votes[self] = FALSE then
-                \* Cast vote
+                \* Create round map and vote for the proposed block in a single step
+                votes := [ v ∈ Validators |-> IF v = self THEN TRUE ELSE FALSE ];
+            \* 2) If we already hit the threshold, finalize *before* any more votes
+            elsif votingHeight ≠ 0 ∧ voteCount ≥ VoteThreshold then
+                blocks         := [ blocks EXCEPT ![votingHeight].finalized = TRUE ];
+                finalizedHeight:= votingHeight;
+                votingHeight   := 0;
+                votes          := [ v ∈ Validators |-> FALSE ];
+            \* 3) Otherwise, if this validator hasn’t voted yet *and* we’re still below threshold, cast one vote
+            elsif votingHeight ≠ 0 ∧ votes[self] = FALSE ∧ voteCount < VoteThreshold then
                 votes[self] := TRUE;
-            elsif votingHeight ≠ 0 ∧ Cardinality({v ∈ Validators: votes[v]}) ≥ VoteThreshold then
-                \* Finalize upon reaching threshold
-                blocks := [ blocks EXCEPT ![votingHeight].finalized = TRUE ];
-                finalizedHeight := votingHeight;
-                votingHeight := 0;
-                votes := [v ∈ Validators |-> FALSE];
             end if;
+
             \* Update stalled mode based on gap
             stalled := (currentHeight - finalizedHeight) > L;
             \* Termination condition
@@ -116,27 +124,30 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "5d1325a4" /\ chksum(tla) = "197560c0")
+\* BEGIN TRANSLATION (chksum(pcal) = "867ce987" /\ chksum(tla) = "4c89b7eb")
 CONSTANT defaultInitValue
 VARIABLES pc, blocks, currentHeight, finalizedHeight, stalled, votingHeight, 
           votes
 
 (* define statement *)
-Invariant_FinalizedHeightConsistent ==
+FinalizedHeightConsistent ==
     ∃ i ∈ 1..Len(blocks): blocks[i].height = finalizedHeight ∧ blocks[i].finalized = TRUE
     ∧ ∀ j ∈ 1..Len(blocks): blocks[j].finalized = TRUE ⇒ blocks[j].height ≤ finalizedHeight
-Invariant_ContiguousFinality ==
+ContiguousFinality ==
     ∀ i ∈ 1..Len(blocks): (blocks[i].height < finalizedHeight) ⇒ blocks[i].finalized = TRUE
-Invariant_ContextMonotonic ==
+ContextMonotonic ==
     ∀ k ∈ 2..Len(blocks): blocks[k].context_bft ≥ blocks[k-1].context_bft
-Invariant_StalledCorrect == stalled = (currentHeight - finalizedHeight > L)
-Invariant_LNonDeadlock == L ≥ Sigma
-Invariant_VoteThresholdBound == VoteThreshold ≤ Cardinality(Validators)
+StalledCorrect == stalled = (currentHeight - finalizedHeight > L)
+LNonDeadlock == L ≥ Sigma
+VoteThresholdBound == VoteThreshold ≤ Cardinality(Validators)
+VoteMapReset == votingHeight = 0 ⇒ votes = [ v ∈ Validators |-> FALSE ]
+VotesOnlyDuringVoting == ∃ v ∈ Validators: votes[v] = TRUE ⇒ votingHeight ≠ 0
 
-VARIABLES newHeight, newParentHeight, newContext, targetHeight
+VARIABLES newHeight, newParentHeight, newContext, targetHeight, voteCount
 
 vars == << pc, blocks, currentHeight, finalizedHeight, stalled, votingHeight, 
-           votes, newHeight, newParentHeight, newContext, targetHeight >>
+           votes, newHeight, newParentHeight, newContext, targetHeight, 
+           voteCount >>
 
 ProcSet == (Miners) \cup (Validators)
 
@@ -153,6 +164,7 @@ Init == (* Global variables *)
         /\ newContext = [self \in Miners |-> defaultInitValue]
         (* Process Validator *)
         /\ targetHeight = [self \in Validators |-> defaultInitValue]
+        /\ voteCount = [self \in Validators |-> defaultInitValue]
         /\ pc = [self \in ProcSet |-> CASE self \in Miners -> "MineAndCommit"
                                         [] self \in Validators -> "Finalizer"]
 
@@ -177,7 +189,7 @@ MineAndCommit(self) == /\ pc[self] = "MineAndCommit"
                                                   newHeight, newParentHeight, 
                                                   newContext >>
                        /\ UNCHANGED << finalizedHeight, stalled, votingHeight, 
-                                       votes, targetHeight >>
+                                       votes, targetHeight, voteCount >>
 
 Miner(self) == MineAndCommit(self)
 
@@ -185,25 +197,23 @@ Finalizer(self) == /\ pc[self] = "Finalizer"
                    /\ IF stalled
                          THEN /\ stalled = FALSE
                          ELSE /\ TRUE
-                   /\ IF votingHeight = 0 ∧ (currentHeight - (finalizedHeight + 1) ≥ Sigma)
+                   /\ voteCount' = [voteCount EXCEPT ![self] = Cardinality({ v ∈ Validators : votes[v] = TRUE })]
+                   /\ IF votingHeight = 0 ∧ currentHeight - (finalizedHeight + 1) ≥ Sigma
                          THEN /\ votingHeight' = finalizedHeight + 1
-                              /\ votes' = [v ∈ Validators |-> FALSE]
+                              /\ votes' = [ v ∈ Validators |-> IF v = self THEN TRUE ELSE FALSE ]
                               /\ UNCHANGED << blocks, finalizedHeight >>
-                         ELSE /\ IF votingHeight # 0 ∧ votes[self] = FALSE
-                                    THEN /\ votes' = [votes EXCEPT ![self] = TRUE]
+                         ELSE /\ IF votingHeight ≠ 0 ∧ voteCount'[self] ≥ VoteThreshold
+                                    THEN /\ blocks' = [ blocks EXCEPT ![votingHeight].finalized = TRUE ]
+                                         /\ finalizedHeight' = votingHeight
+                                         /\ votingHeight' = 0
+                                         /\ votes' = [ v ∈ Validators |-> FALSE ]
+                                    ELSE /\ IF votingHeight ≠ 0 ∧ votes[self] = FALSE ∧ voteCount'[self] < VoteThreshold
+                                               THEN /\ votes' = [votes EXCEPT ![self] = TRUE]
+                                               ELSE /\ TRUE
+                                                    /\ votes' = votes
                                          /\ UNCHANGED << blocks, 
                                                          finalizedHeight, 
                                                          votingHeight >>
-                                    ELSE /\ IF votingHeight ≠ 0 ∧ Cardinality({v ∈ Validators: votes[v]}) ≥ VoteThreshold
-                                               THEN /\ blocks' = [ blocks EXCEPT ![votingHeight].finalized = TRUE ]
-                                                    /\ finalizedHeight' = votingHeight
-                                                    /\ votingHeight' = 0
-                                                    /\ votes' = [v ∈ Validators |-> FALSE]
-                                               ELSE /\ TRUE
-                                                    /\ UNCHANGED << blocks, 
-                                                                    finalizedHeight, 
-                                                                    votingHeight, 
-                                                                    votes >>
                    /\ stalled' = ((currentHeight - finalizedHeight') > L)
                    /\ IF currentHeight = MaxHeight ∧ (currentHeight - finalizedHeight') ≤ Sigma
                          THEN /\ pc' = [pc EXCEPT ![self] = "Ending"]
@@ -213,13 +223,14 @@ Finalizer(self) == /\ pc[self] = "Finalizer"
 
 Ending(self) == /\ pc[self] = "Ending"
                 /\ Assert(currentHeight = MaxHeight, 
-                          "Failure of assertion at line 114, column 9.")
+                          "Failure of assertion at line 122, column 9.")
                 /\ Assert(finalizedHeight = MaxHeight - Sigma, 
-                          "Failure of assertion at line 115, column 9.")
+                          "Failure of assertion at line 123, column 9.")
                 /\ pc' = [pc EXCEPT ![self] = "Done"]
                 /\ UNCHANGED << blocks, currentHeight, finalizedHeight, 
                                 stalled, votingHeight, votes, newHeight, 
-                                newParentHeight, newContext, targetHeight >>
+                                newParentHeight, newContext, targetHeight, 
+                                voteCount >>
 
 Validator(self) == Finalizer(self) \/ Ending(self)
 
