@@ -21,6 +21,8 @@ CONSTANT VoteThreshold
 variables 
     \* Initialize blockchain with genesis block at height 1.
     \* We consider genesis finalized by default (finalized = TRUE) and its context_bft = 1.
+    \* TODO: In this simplified model, all nodes share the same blockchain state,
+    \* which is not the case in practice. In practice, each node has its own state.
     blocks = << [height |-> 1, parent |-> 0, context_bft |-> 1, finalized |-> TRUE] >>,
     \* Height of the current tip of the chain (initially 1 at genesis).
     currentHeight = 1,
@@ -32,20 +34,6 @@ variables
     votingHeight = 0,
     \* Map of validators' votes
     votes = [v ∈ Validators |-> FALSE]
-define
-    FinalizedHeightConsistent ==
-        ∃ i ∈ 1..Len(blocks): blocks[i].height = finalizedHeight ∧ blocks[i].finalized = TRUE
-        ∧ ∀ j ∈ 1..Len(blocks): blocks[j].finalized = TRUE ⇒ blocks[j].height ≤ finalizedHeight
-    ContiguousFinality ==
-        ∀ i ∈ 1..Len(blocks): (blocks[i].height < finalizedHeight) ⇒ blocks[i].finalized = TRUE
-    ContextMonotonic ==
-        ∀ k ∈ 2..Len(blocks): blocks[k].context_bft ≥ blocks[k-1].context_bft
-    StalledCorrect == stalled = (currentHeight - finalizedHeight > L)
-    LNonDeadlock == L ≥ Sigma
-    VoteThresholdBound == VoteThreshold ≤ Cardinality(Validators)
-    VoteMapReset == votingHeight = 0 ⇒ votes = [ v ∈ Validators |-> FALSE ]
-    VotesOnlyDuringVoting == ∃ v ∈ Validators: votes[v] = TRUE ⇒ votingHeight ≠ 0
-end define;
 
 \* Miner processes
 process Miner ∈ Miners
@@ -124,26 +112,12 @@ begin
 end process;
 
 end algorithm; *)
-\* BEGIN TRANSLATION (chksum(pcal) = "867ce987" /\ chksum(tla) = "4c89b7eb")
+
+\* BEGIN TRANSLATION (chksum(pcal) = "49ca6a16" /\ chksum(tla) = "f25e437")
 CONSTANT defaultInitValue
 VARIABLES pc, blocks, currentHeight, finalizedHeight, stalled, votingHeight, 
-          votes
-
-(* define statement *)
-FinalizedHeightConsistent ==
-    ∃ i ∈ 1..Len(blocks): blocks[i].height = finalizedHeight ∧ blocks[i].finalized = TRUE
-    ∧ ∀ j ∈ 1..Len(blocks): blocks[j].finalized = TRUE ⇒ blocks[j].height ≤ finalizedHeight
-ContiguousFinality ==
-    ∀ i ∈ 1..Len(blocks): (blocks[i].height < finalizedHeight) ⇒ blocks[i].finalized = TRUE
-ContextMonotonic ==
-    ∀ k ∈ 2..Len(blocks): blocks[k].context_bft ≥ blocks[k-1].context_bft
-StalledCorrect == stalled = (currentHeight - finalizedHeight > L)
-LNonDeadlock == L ≥ Sigma
-VoteThresholdBound == VoteThreshold ≤ Cardinality(Validators)
-VoteMapReset == votingHeight = 0 ⇒ votes = [ v ∈ Validators |-> FALSE ]
-VotesOnlyDuringVoting == ∃ v ∈ Validators: votes[v] = TRUE ⇒ votingHeight ≠ 0
-
-VARIABLES newHeight, newParentHeight, newContext, targetHeight, voteCount
+          votes, newHeight, newParentHeight, newContext, targetHeight, 
+          voteCount
 
 vars == << pc, blocks, currentHeight, finalizedHeight, stalled, votingHeight, 
            votes, newHeight, newParentHeight, newContext, targetHeight, 
@@ -223,9 +197,9 @@ Finalizer(self) == /\ pc[self] = "Finalizer"
 
 Ending(self) == /\ pc[self] = "Ending"
                 /\ Assert(currentHeight = MaxHeight, 
-                          "Failure of assertion at line 122, column 9.")
+                          "Failure of assertion at line 110, column 9.")
                 /\ Assert(finalizedHeight = MaxHeight - Sigma, 
-                          "Failure of assertion at line 123, column 9.")
+                          "Failure of assertion at line 111, column 9.")
                 /\ pc' = [pc EXCEPT ![self] = "Done"]
                 /\ UNCHANGED << blocks, currentHeight, finalizedHeight, 
                                 stalled, votingHeight, votes, newHeight, 
@@ -247,4 +221,58 @@ Spec == Init /\ [][Next]_vars
 Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 
 \* END TRANSLATION 
+
+\* INVARIANTS
+
+\* Invariant: finalizedHeight is the height of a block that is finalized, and no higher block is marked final.
+\* (Follows from Assured Finality — finalized chain is prefix-consistent)
+FinalizedHeightConsistent ==
+    ∃ i ∈ 1..Len(blocks): blocks[i].height = finalizedHeight ∧ blocks[i].finalized = TRUE
+    ∧ ∀ j ∈ 1..Len(blocks): blocks[j].finalized = TRUE ⇒ blocks[j].height ≤ finalizedHeight
+
+\* Invariant: all blocks up to finalizedHeight are finalized (no gap in final prefix).
+\* (Security Analysis: "LOG_fin is prefix-consistent" - prefix property of finalized chain)
+ContiguousFinality ==
+    ∀ i ∈ 1..Len(blocks): (blocks[i].height < finalizedHeight) ⇒ blocks[i].finalized = TRUE
+
+\* Invariant: context_bft is non-decreasing along the chain (no block has context lower than its parent).
+ContextMonotonic ==
+    ∀ k ∈ 2..Len(blocks): blocks[k].context_bft ≥ blocks[k-1].context_bft
+
+\* Stalled mode invariant: the stalled flag correctly reflects the chain gap
+\* (Construction: Bounded-Availability Argument)
+StalledCorrect == stalled = (currentHeight - finalizedHeight > L)
+
+\* Progress requirement: to avoid deadlock, L must not be smaller than Sigma
+\* (Construction Q&A: discussion of choosing L significantly larger than σ)
+LNonDeadlock == L ≥ Sigma
+
+\* You can’t require more votes than there are validators.
+\* (Security Analysis: Definition "One-third bound on non-honest voting")
+VoteThresholdBound == VoteThreshold ≤ Cardinality(Validators)
+
+\* Every time votingHeight = 0, the map must be fully reset.
+\* (Implicit in π_bft spec’s per-round reset - votes reset at round start)
+VoteMapReset == votingHeight = 0 ⇒ votes = [ v ∈ Validators |-> FALSE ]
+
+\* No one may vote unless a round is in progress.
+\* (Implicit in π_bft spec — votes only valid during proposal phase)
+VotesOnlyDuringVoting == ∃ v ∈ Validators: votes[v] = TRUE ⇒ votingHeight ≠ 0
+
+\* σ‑Finality: every finalized block must have been ≥ Sigma deep when finalized.
+\* (Construction: Tail Confirmation Rule - a block is only finalized if it is σ-deep)
+SigmaFinality == ∀ i ∈ 2..Len(blocks) :
+    blocks[i].finalized = TRUE ⇒ blocks[i].height + Sigma ≤ currentHeight
+
+\* No rollback past final: once a block is finalized, it never disappears from the chain.
+\* (Security Analysis: Theorem "LOG_{ba} does not roll back past the agreed LOG_{fin}")
+NoRollbackPastFinal == ∀ i ∈ 1..Len(blocks) :
+    blocks[i].finalized = TRUE ⇒ ∀ j ∈ i..Len(blocks) : blocks[j].height ≥ i
+
+\* Assured Finality (trivial in single‐chain model, but for extension to multiple nodes
+\* we would require the same finalized prefix across all honest replicas).
+\* (Security Analysis: Theorem "LOG_{fin} Safety (from Prefix Agreement of Π_bc)"
+\*                      and "LOG_{fin} Safety (from Final Agreement of Π_bft)")
+AssuredFinality == TRUE
+
 ====
