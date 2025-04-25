@@ -272,7 +272,23 @@ NoRollbackPastFinal == ∀ i ∈ 1..Len(blocks) :
 \* Assured Finality (trivial in single‐chain model, but for extension to multiple nodes
 \* we would require the same finalized prefix across all honest replicas).
 \* (Security Analysis: Theorem "LOG_{fin} Safety (from Prefix Agreement of Π_bc)"
-\*                      and "LOG_{fin} Safety (from Final Agreement of Π_bft)")
+\* and "LOG_{fin} Safety (from Final Agreement of Π_bft)")
 AssuredFinality == TRUE
+
+\* TEMPORAL PROPERTIES
+
+\* Eventual Finality:
+\* Every PoW block that gets mined will eventually be finalized by the BFT layer.
+\* (Liveness of Finality - BFT makes progress under honest conditions; see
+\* Questions About Crosslink §3.3.5)
+EventualFinality == ∀ h ∈ 2..MaxHeight : □ ( (currentHeight ≥ h) ⇒
+    ◇ (∃ i ∈ 1..Len(blocks) : blocks[i].height = h ∧ blocks[i].finalized = TRUE) )
+
+\* No Permanent Stall (Bounded Availability):
+\* If the chain falls too far behind finality (gap > L), it will eventually
+\* catch back up or stop growing, rather than remain stalled forever.
+\* (Bounded-Availability Argument; see Arguments for Bounded Availability §3.3.1)
+NoPermanentStall == □ ( (currentHeight - finalizedHeight > L) ⇒
+    ◇ (currentHeight - finalizedHeight ≤ L) )
 
 ====
