@@ -5,27 +5,27 @@ EXTENDS protocol
 \* Invariants
 \*=========================
 
-\* Invariant: finalizedHeight is the height of a block that is finalized, and no higher block is marked final.
-\* (Follows from Assured Finality — finalized chain is prefix-consistent)
+\* `finalizedHeight` is the height of a block that is finalized, and no higher block is marked final.
+\* Follows from Assured Finality - finalized chain is prefix-consistent.
 FinalizedHeightConsistent ==
-    ∃ i ∈ 1..Len(blocks): blocks[i].height = finalizedHeight ∧ blocks[i].finalized = TRUE
-    ∧ ∀ j ∈ 1..Len(blocks): blocks[j].finalized = TRUE ⇒ blocks[j].height ≤ finalizedHeight
+    ∃ i ∈ 1..Len(blocks): blocks[i].height = finalizedHeight ∧ blocks[i].finalized = TRUE ∧
+        ∀ j ∈ 1..Len(blocks): blocks[j].finalized = TRUE ⇒ blocks[j].height ≤ finalizedHeight
 
-\* Invariant: all blocks up to finalizedHeight are finalized (no gap in final prefix).
-\* (Security Analysis: "LOG_fin is prefix-consistent" - prefix property of finalized chain)
+\* All blocks up to `finalizedHeight` are finalized (no gap in final prefix).
+\* ** (Security Analysis: "LOG_fin is prefix-consistent" - prefix property of finalized chain)
 ContiguousFinality ==
     ∀ i ∈ 1..Len(blocks): (blocks[i].height < finalizedHeight) ⇒ blocks[i].finalized = TRUE
 
-\* Invariant: context_bft is non-decreasing along the chain (no block has context lower than its parent).
+\* `context_bft` is non-decreasing along the chain (no block has context lower than its parent).
 ContextMonotonic ==
     ∀ k ∈ 2..Len(blocks): blocks[k].context_bft ≥ blocks[k-1].context_bft
 
-\* Stalled mode invariant: the stalled flag correctly reflects the chain gap
-\* (Construction: Bounded-Availability Argument)
+\* Stalled mode: The stalled flag correctly reflects the chain gap.
+\* Bounded-Availability Argument.
 StalledCorrect == stalled = (currentHeight - finalizedHeight > L)
 
 \* Progress requirement: to avoid deadlock, L must not be smaller than Sigma
-\* (Construction Q&A: discussion of choosing L significantly larger than σ)
+\* Definition of crosslink2, parameters: L significantly larger than σ.
 LNonDeadlock == L ≥ Sigma
 
 \* You can’t require more votes than there are validators.
