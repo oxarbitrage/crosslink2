@@ -19,11 +19,9 @@ CONSTANT VoteThreshold
 (*--algorithm crosslink
 
 variables 
-    \* Initialize blockchain with genesis block at height 1.
+    \* Sequence of finalized and non-finalized blocks we have in the blockchain.
     \* We consider genesis finalized by default (finalized = TRUE) and its context_bft = 1.
-    \* TODO: In this simplified model, all nodes share the same blockchain state,
-    \* which is not the case in practice. In practice, each node has its own state.
-    blocks = << [height |-> 1, parent |-> 0, context_bft |-> 1, finalized |-> TRUE] >>,
+    blocks = << [height |-> 1, context_bft |-> 1, finalized |-> TRUE] >>,
     \* Height of the current tip of the chain (initially 1 at genesis).
     currentHeight = 1,
     \* Height of the latest finalized block (genesis is finalized at 1).
@@ -39,7 +37,6 @@ variables
 process Miner ∈ Miners
 variables
     newHeight,
-    newParentHeight,
     newContext
 begin
     MineAndCommit:
@@ -50,14 +47,11 @@ begin
             end if;
             \* Determine new block properties
             newHeight := currentHeight + 1;
-            \* parent is the tip's height
-            newParentHeight := currentHeight;
             \* BFT context = last finalized height at time of mining
             newContext := finalizedHeight;
             \* Create and append the new block
             blocks := Append(blocks, [
                 height      |-> newHeight, 
-                parent      |-> newParentHeight, 
                 context_bft |-> newContext, 
                 finalized   |-> FALSE
             ]);
@@ -113,20 +107,18 @@ end process;
 
 end algorithm; *)
 
-\* BEGIN TRANSLATION (chksum(pcal) = "49ca6a16" /\ chksum(tla) = "f25e437")
+\* BEGIN TRANSLATION (chksum(pcal) = "b319ec5d" /\ chksum(tla) = "1b3f06a1")
 CONSTANT defaultInitValue
 VARIABLES pc, blocks, currentHeight, finalizedHeight, stalled, votingHeight, 
-          votes, newHeight, newParentHeight, newContext, targetHeight, 
-          voteCount
+          votes, newHeight, newContext, targetHeight, voteCount
 
 vars == << pc, blocks, currentHeight, finalizedHeight, stalled, votingHeight, 
-           votes, newHeight, newParentHeight, newContext, targetHeight, 
-           voteCount >>
+           votes, newHeight, newContext, targetHeight, voteCount >>
 
 ProcSet == (Miners) \cup (Validators)
 
 Init == (* Global variables *)
-        /\ blocks = << [height |-> 1, parent |-> 0, context_bft |-> 1, finalized |-> TRUE] >>
+        /\ blocks = << [height |-> 1, context_bft |-> 1, finalized |-> TRUE] >>
         /\ currentHeight = 1
         /\ finalizedHeight = 1
         /\ stalled = FALSE
@@ -134,7 +126,6 @@ Init == (* Global variables *)
         /\ votes = [v ∈ Validators |-> FALSE]
         (* Process Miner *)
         /\ newHeight = [self \in Miners |-> defaultInitValue]
-        /\ newParentHeight = [self \in Miners |-> defaultInitValue]
         /\ newContext = [self \in Miners |-> defaultInitValue]
         (* Process Validator *)
         /\ targetHeight = [self \in Validators |-> defaultInitValue]
@@ -148,11 +139,9 @@ MineAndCommit(self) == /\ pc[self] = "MineAndCommit"
                                         THEN /\ stalled = FALSE
                                         ELSE /\ TRUE
                                   /\ newHeight' = [newHeight EXCEPT ![self] = currentHeight + 1]
-                                  /\ newParentHeight' = [newParentHeight EXCEPT ![self] = currentHeight]
                                   /\ newContext' = [newContext EXCEPT ![self] = finalizedHeight]
                                   /\ blocks' =           Append(blocks, [
                                                    height      |-> newHeight'[self],
-                                                   parent      |-> newParentHeight'[self],
                                                    context_bft |-> newContext'[self],
                                                    finalized   |-> FALSE
                                                ])
@@ -160,8 +149,7 @@ MineAndCommit(self) == /\ pc[self] = "MineAndCommit"
                                   /\ pc' = [pc EXCEPT ![self] = "MineAndCommit"]
                              ELSE /\ pc' = [pc EXCEPT ![self] = "Done"]
                                   /\ UNCHANGED << blocks, currentHeight, 
-                                                  newHeight, newParentHeight, 
-                                                  newContext >>
+                                                  newHeight, newContext >>
                        /\ UNCHANGED << finalizedHeight, stalled, votingHeight, 
                                        votes, targetHeight, voteCount >>
 
@@ -192,19 +180,18 @@ Finalizer(self) == /\ pc[self] = "Finalizer"
                    /\ IF currentHeight = MaxHeight ∧ (currentHeight - finalizedHeight') ≤ Sigma
                          THEN /\ pc' = [pc EXCEPT ![self] = "Ending"]
                          ELSE /\ pc' = [pc EXCEPT ![self] = "Finalizer"]
-                   /\ UNCHANGED << currentHeight, newHeight, newParentHeight, 
-                                   newContext, targetHeight >>
+                   /\ UNCHANGED << currentHeight, newHeight, newContext, 
+                                   targetHeight >>
 
 Ending(self) == /\ pc[self] = "Ending"
                 /\ Assert(currentHeight = MaxHeight, 
-                          "Failure of assertion at line 110, column 9.")
+                          "Failure of assertion at line 104, column 9.")
                 /\ Assert(finalizedHeight = MaxHeight - Sigma, 
-                          "Failure of assertion at line 111, column 9.")
+                          "Failure of assertion at line 105, column 9.")
                 /\ pc' = [pc EXCEPT ![self] = "Done"]
                 /\ UNCHANGED << blocks, currentHeight, finalizedHeight, 
                                 stalled, votingHeight, votes, newHeight, 
-                                newParentHeight, newContext, targetHeight, 
-                                voteCount >>
+                                newContext, targetHeight, voteCount >>
 
 Validator(self) == Finalizer(self) \/ Ending(self)
 
