@@ -20,24 +20,20 @@ CONSTANT VoteThreshold
 
 variables 
     \* Sequence of finalized and non-finalized blocks we have in the blockchain.
-    \* We consider genesis finalized by default (finalized = TRUE) and its context_bft = 1.
     blocks = << [height |-> 1, context_bft |-> 1, finalized |-> TRUE] >>,
-    \* Height of the current tip of the chain (initially 1 at genesis).
+    \* Height of the current tip of the chain.
     currentHeight = 1,
-    \* Height of the latest finalized block (genesis is finalized at 1).
+    \* Height of the latest finalized block.
     finalizedHeight = 1,
     \* Stalled mode flag: TRUE if chain-gap > L
     stalled = FALSE,
     \* Height of block currently under vote (0 = none)
     votingHeight = 0,
-    \* Map of validators' votes
+    \* Map of validators votes
     votes = [v ∈ Validators |-> FALSE]
 
 \* Miner processes
 process Miner ∈ Miners
-variables
-    newHeight,
-    newContext
 begin
     MineAndCommit:
         while currentHeight < MaxHeight do
@@ -45,25 +41,20 @@ begin
             if stalled then
                 await stalled = FALSE;
             end if;
-            \* Determine new block properties
-            newHeight := currentHeight + 1;
-            \* BFT context = last finalized height at time of mining
-            newContext := finalizedHeight;
             \* Create and append the new block
             blocks := Append(blocks, [
-                height      |-> newHeight, 
-                context_bft |-> newContext, 
+                height      |-> currentHeight + 1, 
+                context_bft |-> finalizedHeight, 
                 finalized   |-> FALSE
             ]);
-            currentHeight := newHeight;
+            currentHeight := currentHeight + 1;
         end while;
 end process;
 
 \* Finality Validator processes
 process Validator ∈ Validators
 variables
-    \* Height of the block to be finalized
-    targetHeight,
+    \* The count of votes for the current round.
     voteCount,
 begin
     Finalizer:
@@ -107,13 +98,13 @@ end process;
 
 end algorithm; *)
 
-\* BEGIN TRANSLATION (chksum(pcal) = "b319ec5d" /\ chksum(tla) = "1b3f06a1")
+\* BEGIN TRANSLATION (chksum(pcal) = "34f42273" /\ chksum(tla) = "ff9fa02d")
 CONSTANT defaultInitValue
 VARIABLES pc, blocks, currentHeight, finalizedHeight, stalled, votingHeight, 
-          votes, newHeight, newContext, targetHeight, voteCount
+          votes, voteCount
 
 vars == << pc, blocks, currentHeight, finalizedHeight, stalled, votingHeight, 
-           votes, newHeight, newContext, targetHeight, voteCount >>
+           votes, voteCount >>
 
 ProcSet == (Miners) \cup (Validators)
 
@@ -124,11 +115,7 @@ Init == (* Global variables *)
         /\ stalled = FALSE
         /\ votingHeight = 0
         /\ votes = [v ∈ Validators |-> FALSE]
-        (* Process Miner *)
-        /\ newHeight = [self \in Miners |-> defaultInitValue]
-        /\ newContext = [self \in Miners |-> defaultInitValue]
         (* Process Validator *)
-        /\ targetHeight = [self \in Validators |-> defaultInitValue]
         /\ voteCount = [self \in Validators |-> defaultInitValue]
         /\ pc = [self \in ProcSet |-> CASE self \in Miners -> "MineAndCommit"
                                         [] self \in Validators -> "Finalizer"]
@@ -138,20 +125,17 @@ MineAndCommit(self) == /\ pc[self] = "MineAndCommit"
                              THEN /\ IF stalled
                                         THEN /\ stalled = FALSE
                                         ELSE /\ TRUE
-                                  /\ newHeight' = [newHeight EXCEPT ![self] = currentHeight + 1]
-                                  /\ newContext' = [newContext EXCEPT ![self] = finalizedHeight]
                                   /\ blocks' =           Append(blocks, [
-                                                   height      |-> newHeight'[self],
-                                                   context_bft |-> newContext'[self],
+                                                   height      |-> currentHeight + 1,
+                                                   context_bft |-> finalizedHeight,
                                                    finalized   |-> FALSE
                                                ])
-                                  /\ currentHeight' = newHeight'[self]
+                                  /\ currentHeight' = currentHeight + 1
                                   /\ pc' = [pc EXCEPT ![self] = "MineAndCommit"]
                              ELSE /\ pc' = [pc EXCEPT ![self] = "Done"]
-                                  /\ UNCHANGED << blocks, currentHeight, 
-                                                  newHeight, newContext >>
+                                  /\ UNCHANGED << blocks, currentHeight >>
                        /\ UNCHANGED << finalizedHeight, stalled, votingHeight, 
-                                       votes, targetHeight, voteCount >>
+                                       votes, voteCount >>
 
 Miner(self) == MineAndCommit(self)
 
@@ -180,18 +164,16 @@ Finalizer(self) == /\ pc[self] = "Finalizer"
                    /\ IF currentHeight = MaxHeight ∧ (currentHeight - finalizedHeight') ≤ Sigma
                          THEN /\ pc' = [pc EXCEPT ![self] = "Ending"]
                          ELSE /\ pc' = [pc EXCEPT ![self] = "Finalizer"]
-                   /\ UNCHANGED << currentHeight, newHeight, newContext, 
-                                   targetHeight >>
+                   /\ UNCHANGED currentHeight
 
 Ending(self) == /\ pc[self] = "Ending"
                 /\ Assert(currentHeight = MaxHeight, 
-                          "Failure of assertion at line 104, column 9.")
+                          "Failure of assertion at line 95, column 9.")
                 /\ Assert(finalizedHeight = MaxHeight - Sigma, 
-                          "Failure of assertion at line 105, column 9.")
+                          "Failure of assertion at line 96, column 9.")
                 /\ pc' = [pc EXCEPT ![self] = "Done"]
                 /\ UNCHANGED << blocks, currentHeight, finalizedHeight, 
-                                stalled, votingHeight, votes, newHeight, 
-                                newContext, targetHeight, voteCount >>
+                                stalled, votingHeight, votes, voteCount >>
 
 Validator(self) == Finalizer(self) \/ Ending(self)
 
