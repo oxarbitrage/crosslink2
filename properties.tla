@@ -2,6 +2,27 @@
 EXTENDS protocol
 
 \*=========================
+\* Type checker
+\*=========================
+
+\* Constants
+ConstantsTC ==
+    Sigma ∈ Nat ∧
+    MaxHeight ∈ Nat ∧
+    L ∈ Nat ∧
+    VoteThreshold ∈ Nat ∧
+    Miners ∈ SUBSET STRING ∧
+    Validators ∈ SUBSET STRING
+
+\* Variables
+VariablesTC ==
+    blocks ∈ Seq([height: Nat, context_bft: Nat, finalized: BOOLEAN]) ∧
+    currentHeight ∈ Nat ∧
+    finalizedHeight ∈ Nat ∧
+    stalled ∈ BOOLEAN ∧
+    votingHeight ∈ Nat
+
+\*=========================
 \* Invariants
 \*=========================
 

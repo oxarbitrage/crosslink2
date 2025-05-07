@@ -32,6 +32,10 @@ variables
     \* Map of validators votes
     votes = [v ∈ Validators |-> FALSE]
 
+define
+    Tally == Cardinality({ v ∈ Validators : votes[v] = TRUE })
+end define;
+
 \* Miner processes
 process Miner ∈ Miners
 begin
@@ -53,9 +57,6 @@ end process;
 
 \* Finality Validator processes
 process Validator ∈ Validators
-variables
-    \* The count of votes for the current round.
-    voteCount,
 begin
     Finalizer:
         while (TRUE) do
@@ -64,22 +65,19 @@ begin
                 await stalled = FALSE;
             end if;
 
-            \* Tally number of votes
-            voteCount := Cardinality({ v ∈ Validators : votes[v] = TRUE });
-
             \* 1) If no round in progress and block is σ‐deep, start round
             if votingHeight = 0 ∧ currentHeight - (finalizedHeight + 1) ≥ Sigma then
                 votingHeight := finalizedHeight + 1;
                 \* Create round map and vote for the proposed block in a single step
                 votes := [ v ∈ Validators |-> IF v = self THEN TRUE ELSE FALSE ];
             \* 2) If we already hit the threshold, finalize *before* any more votes
-            elsif votingHeight ≠ 0 ∧ voteCount ≥ VoteThreshold then
+            elsif votingHeight ≠ 0 ∧ Tally ≥ VoteThreshold then
                 blocks         := [ blocks EXCEPT ![votingHeight].finalized = TRUE ];
                 finalizedHeight:= votingHeight;
                 votingHeight   := 0;
                 votes          := [ v ∈ Validators |-> FALSE ];
             \* 3) Otherwise, if this validator hasn’t voted yet *and* we’re still below threshold, cast one vote
-            elsif votingHeight ≠ 0 ∧ votes[self] = FALSE ∧ voteCount < VoteThreshold then
+            elsif votingHeight ≠ 0 ∧ votes[self] = FALSE ∧ Tally < VoteThreshold then
                 votes[self] := TRUE;
             end if;
 
@@ -98,13 +96,16 @@ end process;
 
 end algorithm; *)
 
-\* BEGIN TRANSLATION (chksum(pcal) = "34f42273" /\ chksum(tla) = "ff9fa02d")
-CONSTANT defaultInitValue
+\* BEGIN TRANSLATION (chksum(pcal) = "f091a0fe" /\ chksum(tla) = "d78ac1bf")
 VARIABLES pc, blocks, currentHeight, finalizedHeight, stalled, votingHeight, 
-          votes, voteCount
+          votes
+
+(* define statement *)
+Tally == Cardinality({ v ∈ Validators : votes[v] = TRUE })
+
 
 vars == << pc, blocks, currentHeight, finalizedHeight, stalled, votingHeight, 
-           votes, voteCount >>
+           votes >>
 
 ProcSet == (Miners) \cup (Validators)
 
@@ -115,8 +116,6 @@ Init == (* Global variables *)
         /\ stalled = FALSE
         /\ votingHeight = 0
         /\ votes = [v ∈ Validators |-> FALSE]
-        (* Process Validator *)
-        /\ voteCount = [self \in Validators |-> defaultInitValue]
         /\ pc = [self \in ProcSet |-> CASE self \in Miners -> "MineAndCommit"
                                         [] self \in Validators -> "Finalizer"]
 
@@ -135,7 +134,7 @@ MineAndCommit(self) == /\ pc[self] = "MineAndCommit"
                              ELSE /\ pc' = [pc EXCEPT ![self] = "Done"]
                                   /\ UNCHANGED << blocks, currentHeight >>
                        /\ UNCHANGED << finalizedHeight, stalled, votingHeight, 
-                                       votes, voteCount >>
+                                       votes >>
 
 Miner(self) == MineAndCommit(self)
 
@@ -143,17 +142,16 @@ Finalizer(self) == /\ pc[self] = "Finalizer"
                    /\ IF stalled
                          THEN /\ stalled = FALSE
                          ELSE /\ TRUE
-                   /\ voteCount' = [voteCount EXCEPT ![self] = Cardinality({ v ∈ Validators : votes[v] = TRUE })]
                    /\ IF votingHeight = 0 ∧ currentHeight - (finalizedHeight + 1) ≥ Sigma
                          THEN /\ votingHeight' = finalizedHeight + 1
                               /\ votes' = [ v ∈ Validators |-> IF v = self THEN TRUE ELSE FALSE ]
                               /\ UNCHANGED << blocks, finalizedHeight >>
-                         ELSE /\ IF votingHeight ≠ 0 ∧ voteCount'[self] ≥ VoteThreshold
+                         ELSE /\ IF votingHeight ≠ 0 ∧ Tally ≥ VoteThreshold
                                     THEN /\ blocks' = [ blocks EXCEPT ![votingHeight].finalized = TRUE ]
                                          /\ finalizedHeight' = votingHeight
                                          /\ votingHeight' = 0
                                          /\ votes' = [ v ∈ Validators |-> FALSE ]
-                                    ELSE /\ IF votingHeight ≠ 0 ∧ votes[self] = FALSE ∧ voteCount'[self] < VoteThreshold
+                                    ELSE /\ IF votingHeight ≠ 0 ∧ votes[self] = FALSE ∧ Tally < VoteThreshold
                                                THEN /\ votes' = [votes EXCEPT ![self] = TRUE]
                                                ELSE /\ TRUE
                                                     /\ votes' = votes
@@ -168,12 +166,12 @@ Finalizer(self) == /\ pc[self] = "Finalizer"
 
 Ending(self) == /\ pc[self] = "Ending"
                 /\ Assert(currentHeight = MaxHeight, 
-                          "Failure of assertion at line 95, column 9.")
+                          "Failure of assertion at line 93, column 9.")
                 /\ Assert(finalizedHeight = MaxHeight - Sigma, 
-                          "Failure of assertion at line 96, column 9.")
+                          "Failure of assertion at line 94, column 9.")
                 /\ pc' = [pc EXCEPT ![self] = "Done"]
                 /\ UNCHANGED << blocks, currentHeight, finalizedHeight, 
-                                stalled, votingHeight, votes, voteCount >>
+                                stalled, votingHeight, votes >>
 
 Validator(self) == Finalizer(self) \/ Ending(self)
 
