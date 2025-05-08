@@ -1,7 +1,6 @@
 # Crosslink2 TLA⁺ Specification
 
-A PlusCal ↔ TLA⁺ model of the Crosslink2 “trailing finality layer” for Zcash, as described in  
-**A Trailing Finality Layer for Zcash** by Electric Coin Company.  
+A PlusCal ↔ TLA⁺ model of the Crosslink2 “trailing finality layer” for Zcash, as described in **A Trailing Finality Layer for Zcash** by Electric Coin Company.
 
 📖 [Read the full TFL book](https://electric-coin-company.github.io/tfl-book/)
 
@@ -28,12 +27,11 @@ This section walks through our abstract PlusCal → TLA⁺ model of Crosslink2. 
 
 ### Overview
 
-We model a shared “network” state that all participants read from and write to.
-In reality each node has its own copy of the chain and metadata, but here we collapse it into one global state for simplicity.
+We model a shared "network" state that all participants read from and write to. In reality each node has its own copy of the chain and metadata, but here we collapse it into one global state for simplicity.
 
 The shared state includes:
 
-- **blocks** - a sequence of block-header records (both finalized and pending).
+- **blocks** - a sequence of block header records (both finalized and pending).
 - **currentHeight** – the height of the latest (non-finalized) block.
 - **finalizedHeight** – the height of the latest block that validators have agreed to finalize.
 
@@ -61,7 +59,7 @@ All of the PlusCal code lives in [protocol.tla](protocol.tla); what follows is a
 
 Compete to solve the PoW puzzle.
 
-When any miner "finds" a solution, it appends a new header to blocks and does:
+When any miner "finds" a solution, it appends a new header to blocks and:
 
 ```
 currentHeight := currentHeight + 1
@@ -75,7 +73,7 @@ Watch for new blocks and, when one reaches ≥ Sigma confirmations, start a voti
 
 ```
 votingHeight := finalizedHeight + 1;
-votes        := [ v ∈ Validators ↦ (v = self) ]  \* proposer votes immediately
+votes        := [ v ∈ Validators ↦ (v = self) ]
 ```
 
 Each validator then casts one vote per round.
@@ -89,7 +87,7 @@ When `Cardinality({v | votes[v] = TRUE}) ≥ VoteThreshold`, they finalize:
     votes                          := [ v ∈ Validators ↦ FALSE ];
 ```
 
-If the gap (`currentHeight – finalizedHeight`) ever exceeds `L`, both miners and validators stall (no new blocks or votes) until finalizedHeight catches up.
+If the gap (`currentHeight – finalizedHeight`) ever exceeds `L`, both miners and validators stall (no new blocks or votes) until `finalizedHeight` catches up.
 
 ### Examples
 
@@ -97,8 +95,7 @@ If the gap (`currentHeight – finalizedHeight`) ever exceeds `L`, both miners a
 
 ```mermaid
 flowchart TD
-    NETWORK([fa:fa-cloud NETWORK])
-      --> |fa:fa-puzzle-piece Puzzle| MINER1[[fa:fa-helmet-safety MINER1]]
+    NETWORK([fa:fa-cloud NETWORK]) --> |fa:fa-puzzle-piece Puzzle| MINER1[[fa:fa-helmet-safety MINER1]]
     MINER1 --> |fa:fa-cube Block 1| NETWORK2([fa:fa-cloud NETWORK])
     NETWORK2 --> |fa:fa-cube Block 1| VALIDATOR1[[fa:fa-graduation-cap VALIDATOR1]]
     VALIDATOR1 --> |fa:fa-check Finalize| NETWORK3([fa:fa-cloud NETWORK])
@@ -118,10 +115,9 @@ CONSTANTS
 
 ```mermaid
 flowchart TD
-    NETWORK([fa:fa-cloud NETWORK])
-      --> |fa:fa-puzzle-piece Puzzle| MINER1
-      --> |fa:fa-puzzle-piece Puzzle| MINER2
-      --> |fa:fa-puzzle-piece Puzzle| MINER3
+    NETWORK([fa:fa-cloud NETWORK]) --> |fa:fa-puzzle-piece Puzzle| MINER1
+    NETWORK --> |fa:fa-puzzle-piece Puzzle| MINER2
+    NETWORK --> |fa:fa-puzzle-piece Puzzle| MINER3
 
     MINER2 --> |fa:fa-cube Block 1| NETWORK2([fa:fa-cloud NETWORK])
     subgraph Validators
@@ -177,7 +173,7 @@ You can vary `MaxHeight`, `Sigma`, `Miners`, `Validators`, `L`, and `VoteThresho
 
 ## The properties
 
-We encode and check some Crosslink2 theorems and guarantees in `Properties.tla`.  Here is a mapping of each property to its description and the corresponding section or theorem in the TFL book.
+We encode and check some Crosslink2 theorems and guarantees in [properties.tla](properties.tla). Here is a mapping of each property to its description and the corresponding section or theorem in the TFL book.
 
 | Property                    | Description                                                                                      | Reference                                                                                                                                                                                     |
 | --------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -204,8 +200,6 @@ We validate our Crosslink2 model by running the TLC model checker against all of
 
 > 🔗 [Visual Studio Code – TLA+ Extension](https://marketplace.visualstudio.com/items?itemName=alygin.vscode-tlaplus)
 
----
-
 ### Getting Started in VS Code
 
 1. **Install** the TLA⁺ extension.  
@@ -215,8 +209,6 @@ We validate our Crosslink2 model by running the TLC model checker against all of
      Runs TLC with the **default** configuration (`properties.cfg`) file.  
    - **TLA+: Model check with TLC using non-default config**  
      Prompts you to select one of the sample `.cfg` files in the repo.
-
----
 
 ### The configuration file
 
@@ -275,9 +267,13 @@ java -cp tla2tools.jar tlc2.TLC -config properties.cfg properties.tla
 java -cp tla2tools.jar tlc2.TLC -config sample1.cfg properties.tla
 ```
 
-🛠 Tip: Keep `MaxHeight` small for faster checks. Each additional block height or validator multiplies the state space exponentially.
+> [!CAUTION]
+> Above not working because code has unicode.
 
-Once TLC completes without errors or counterexamples, you’ll have confidence that your TLA⁺ model satisfies all of the Crosslink2 safety and liveness theorems under honest assumptions.
+> [!TIP]
+> Keep `MaxHeight` small for faster checks. Each additional block height or validator multiplies the state space exponentially.
+
+Once TLC completes without errors or counterexamples, you’ll have confidence that your TLA⁺ model satisfies all of the modelled Crosslink2 safety and liveness theorems under honest assumptions.
 
 ## Conclusion & Next Steps
 
@@ -285,7 +281,7 @@ This TLA⁺/PlusCal model gives a concise, executable view of the Crosslink2 tra
 
 - A parameterized PoW chain with miners proposing new blocks.  
 - A BFT‐style voting layer where validators finalize blocks once they reach ≥ σ confirmations.  
-- Key safety and liveness theorems from the TFL book mechanized as invariants and temporal properties.  
+- Safety and liveness theorems from the TFL book mechanized as invariants and temporal properties.  
 - A simple "network" abstraction, stall‐mode, and majority‐voting mechanism.
 
 By model‐checking with TLC, we’ve gained confidence that under **honest‐node assumptions** the core guarantees hold.  
@@ -302,4 +298,4 @@ Feedback, bug reports, and pull requests are welcome!
 
 ## License
 
-This project is released under the **MIT License**. See [LICENSE](LICENSE) for details.  
+This project is released under the **MIT License**. See [LICENSE](LICENSE) for details.
