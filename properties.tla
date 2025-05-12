@@ -26,14 +26,12 @@ VariablesTC ==
 \* Invariants
 \*=========================
 
-(* `finalizedHeight` is the height of a block that is finalized, and no higher block is marked final.
-Follows from Assured Finality - finalized chain is prefix-consistent. *)
+\* `finalizedHeight` is the height of a block that is finalized, no higher block can be marked final.
 FinalizedHeightConsistent ==
     ∃ i ∈ 1..Len(blocks): blocks[i].height = finalizedHeight ∧ blocks[i].finalized = TRUE ∧
         ∀ j ∈ 1..Len(blocks): blocks[j].finalized = TRUE ⇒ blocks[j].height ≤ finalizedHeight
 
-(* All blocks up to `finalizedHeight` are finalized (no gap in final prefix).
-Security Analysis: "LOG_fin is prefix-consistent" - prefix property of finalized chain. *)
+\* All blocks up to `finalizedHeight` are finalized (no gap in final prefix).
 ContiguousFinality ==
     ∀ i ∈ 1..Len(blocks): (blocks[i].height < finalizedHeight) ⇒ blocks[i].finalized = TRUE
 
@@ -41,32 +39,26 @@ ContiguousFinality ==
 ContextMonotonic ==
     ∀ k ∈ 2..Len(blocks): blocks[k].context_bft ≥ blocks[k-1].context_bft
 
-(* Stalled mode: The stalled flag correctly reflects the chain gap.
-Bounded-Availability Argument. *)
+\* Stalled mode: The stalled flag correctly reflects the chain gap.
 StalledCorrect == stalled = (currentHeight - finalizedHeight > L)
 
-(* Progress requirement: to avoid deadlock, L must not be smaller than Sigma
-Definition of crosslink2, parameters: L significantly larger than σ. *)
+\* Progress requirement: to avoid deadlock, L must not be smaller than Sigma
 LNonDeadlock == L ≥ Sigma
 
 \* You can’t require more votes than there are validators.
 VoteThresholdBound == VoteThreshold ≤ Cardinality(Validators)
 
-(* Every time votingHeight = 0, the map must be fully reset.
-Implicit in π_bft spec’s per-round reset - votes reset at round start. *)
+\* Every time votingHeight = 0, the map must be fully reset.
 VoteMapReset == votingHeight = 0 ⇒ votes = [ v ∈ Validators |-> FALSE ]
 
-(* No one may vote unless a round is in progress.
-Implicit in π_bft spec — votes only valid during proposal phase *)
+\* No one may vote unless a round is in progress.
 VotesOnlyDuringVoting == ∃ v ∈ Validators: votes[v] = TRUE ⇒ votingHeight ≠ 0
 
-(* σ‑Finality: every finalized block must have been ≥ Sigma deep when finalized.
-Construction: Tail Confirmation Rule - a block is only finalized if it is σ-deep *)
+\* σ‑Finality: every finalized block must have been ≥ Sigma deep when finalized.
 SigmaFinality == ∀ i ∈ 2..Len(blocks) :
     blocks[i].finalized = TRUE ⇒ blocks[i].height + Sigma ≤ currentHeight
 
-(* No rollback past final: once a block is finalized, it never disappears from the chain.
-Security Analysis: Theorem "LOG_{ba} does not roll back past the agreed LOG_{fin}" *)
+\* No rollback past final: once a block is finalized, it never disappears from the chain.
 NoRollbackPastFinal == ∀ i ∈ 1..Len(blocks) :
     blocks[i].finalized = TRUE ⇒ ∀ j ∈ i..Len(blocks) : blocks[j].height ≥ i
 
@@ -82,15 +74,13 @@ AssuredFinality == TRUE
 
 (* Eventual Finality:
 Every PoW block that gets mined will eventually be finalized by the BFT layer.
-Liveness of Finality - BFT makes progress under honest conditions; 
-see Questions About Crosslink §3.3.5 *)
+Liveness of Finality - BFT makes progress under honest conditions *)
 EventualFinality == ∀ h ∈ 2..MaxHeight : □ ( (currentHeight ≥ h) ⇒
     ◇ (∃ i ∈ 1..Len(blocks) : blocks[i].height = h ∧ blocks[i].finalized = TRUE) )
 
 (* No Permanent Stall (Bounded Availability):
 If the chain falls too far behind finality (gap > L), it will eventually
-catch back up or stop growing, rather than remain stalled forever.
-Bounded-Availability Argument; see Arguments for Bounded Availability §3.3.1 *)
+catch back up or stop growing, rather than remain stalled forever. *)
 NoPermanentStall == □ ( (currentHeight - finalizedHeight > L) ⇒
     ◇ (currentHeight - finalizedHeight ≤ L) )
 
