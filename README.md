@@ -173,7 +173,7 @@ You can vary `MaxHeight`, `Sigma`, `Miners`, `Validators`, `L`, and `VoteThresho
 
 ## The properties
 
-We encode and check some Crosslink2 theorems and guarantees in [properties.tla](properties.tla). Here is a mapping of each property to its description and the corresponding section or theorem in the TFL book.
+We encode and check some Crosslink2 theorems and guarantees in [properties.tla](properties.tla). Here is a mapping of each property to its description and the corresponding section or theorem in the TFL book where applicable.
 
 | Property                    | Description                                                                                      | Reference                                                                                                                                                                                     |
 | --------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -288,6 +288,7 @@ By model‐checking with TLC, we’ve gained confidence that under **honest‐no
 - **Byzantine Behavior:** Add malicious validator processes to test the ⅓‐fault‐tolerance bound and equivocation handling.
 - **Local States and forks:** Instead of one global chain, give each miner and validator its own local copy of `blocks`, `currentHeight`, `finalizedHeight`, etc., and model block-and-vote messages between them. This lets you simulate network latency and partitions—so different nodes can see different tips, produce conflicting forks, and then reconcile once messages arrive.
 - **Performance Tuning:** Experiment with larger configurations.
+- **Formal Verification:** Use TLA⁺ to prove more theorems about the protocol.
 
 ## Contributing
 
