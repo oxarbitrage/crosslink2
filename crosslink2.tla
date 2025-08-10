@@ -34,13 +34,35 @@ Spec == Init ∧ □[Next]_<< bc_chains, bft_chains, crosslink2_chains >>
 BcChainsTypeCheck == bc_chains ∈ Seq(Seq([context_bft: Nat, hash: Nat]))
 BftChainsTypeCheck == bft_chains ∈ Seq(Seq([headers_bc: Seq([context_bft: Nat, hash: Nat]), hash: Nat]))
 
-LinearPrefix == 
-    ∀ i ∈ 1..BcNodes: 
+\* lemma
+BcLinearPrefix ==
+    ∀ i ∈ 1..BcNodes:
         ∀ k ∈ 2..Len(bc_chains[i]): bc_chains[i][k].hash ≥ bc_chains[i][k-1].hash
 
-ViewAgreement ==
-    ∀ i, j ∈ 1..BcNodes: 
+\* lemma
+BftLinearPrefix ==
+    ∀ i ∈ 1..BftNodes:
+        ∀ k ∈ 2..Len(bft_chains[i]): bft_chains[i][k].hash ≥ bft_chains[i][k-1].hash
+
+\* definition
+BcViewAgreement ==
+    ∀ i, j ∈ 1..BcNodes:
         ∨ IsPrefix(bc_chains[i], bc_chains[j])
         ∨ IsPrefix(bc_chains[j], bc_chains[i])
+
+\* definition
+BftViewAgreement ==
+    ∀ i, j ∈ 1..BftNodes:
+        ∨ IsPrefix(bft_chains[i], bft_chains[j])
+        ∨ IsPrefix(bft_chains[j], bft_chains[i])
+
+\* definition
+BftLastFinal(n) == bft_chains[n]
+
+\* definition
+BftFinalAgreement ==
+    ∀ i, j ∈ 1..BftNodes:
+        ∨ IsPrefix(BftLastFinal(i), BftLastFinal(j))
+        ∨ IsPrefix(BftLastFinal(j), BftLastFinal(i))
 
 ====
