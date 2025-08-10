@@ -22,7 +22,7 @@ Next ==
             hash |-> Max({t.hash : t ∈ BcTips}) + 1])]
     ∧ ∃ m ∈ 1..BftNodes:
         ∧ bft_chains' = [bft_chains EXCEPT ![m] = Append(bft_chains[ChooseBestBftChain], [
-            headers_bc |-> Prune(ChooseBcView, Sigma),
+            headers_bc |-> PruneLasts(ChooseBcView, Sigma),
             hash |-> Max({t.hash : t ∈ BcTips}) + 1])]
     ∧ ∃ c ∈ 1..CrossLink2Nodes:
         UNCHANGED <<crosslink2_chains>>
@@ -64,5 +64,15 @@ BftFinalAgreement ==
     ∀ i, j ∈ 1..BftNodes:
         ∨ IsPrefix(BftLastFinal(i), BftLastFinal(j))
         ∨ IsPrefix(BftLastFinal(j), BftLastFinal(i))
+
+\* definition
+BcPrefixConsistency ==
+    ∀ i, j ∈ 1..BcNodes:
+        IsPrefix(PruneFirsts(bc_chains[i], Sigma), bc_chains[j])
+
+\* definition
+BcPrefixAgreement ==
+    ∀ i ∈ 1..BcNodes:
+        IsPrefix(PruneFirsts(bc_chains[i], Sigma), bc_chains[i])
 
 ====
