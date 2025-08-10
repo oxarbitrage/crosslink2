@@ -1,0 +1,46 @@
+---- MODULE crosslink2 ----
+EXTENDS TLC, Naturals, Sequences, utils
+
+CONSTANTS BcNodes, BftNodes, CrossLink2Nodes
+CONSTANTS Sigma, L
+
+VARIABLES bc_chains, bft_chains, crosslink2_chains
+
+INSTANCE definitions
+
+----
+
+Init == 
+    ∧ bc_chains = [i ∈ 1..BcNodes |-> <<BcGenesisBlock>>]
+    ∧ bft_chains = [i ∈ 1..BftNodes |-> <<BftGenesisBlock>>]
+    ∧ crosslink2_chains = [i ∈ 1..CrossLink2Nodes |-> <<CrossLink2GenesisBlock>>]
+
+Next == 
+    ∧ ∃ n ∈ 1..BcNodes: 
+        ∧ bc_chains' = [bc_chains EXCEPT ![n] = Append(bc_chains[ChooseBestBcChain], [
+            context_bft |-> ChooseContextBft,
+            hash |-> Max({t.hash : t ∈ BcTips}) + 1])]
+    ∧ ∃ m ∈ 1..BftNodes:
+        ∧ bft_chains' = [bft_chains EXCEPT ![m] = Append(bft_chains[ChooseBestBftChain], [
+            headers_bc |-> Prune(ChooseBcView, Sigma),
+            hash |-> Max({t.hash : t ∈ BcTips}) + 1])]
+    ∧ ∃ c ∈ 1..CrossLink2Nodes:
+        UNCHANGED <<crosslink2_chains>>
+
+Spec == Init ∧ □[Next]_<< bc_chains, bft_chains, crosslink2_chains >>
+
+----
+
+BcChainsTypeCheck == bc_chains ∈ Seq(Seq([context_bft: Nat, hash: Nat]))
+BftChainsTypeCheck == bft_chains ∈ Seq(Seq([headers_bc: Seq([context_bft: Nat, hash: Nat]), hash: Nat]))
+
+LinearPrefix == 
+    ∀ i ∈ 1..BcNodes: 
+        ∀ k ∈ 2..Len(bc_chains[i]): bc_chains[i][k].hash ≥ bc_chains[i][k-1].hash
+
+ViewAgreement ==
+    ∀ i, j ∈ 1..BcNodes: 
+        ∨ IsPrefix(bc_chains[i], bc_chains[j])
+        ∨ IsPrefix(bc_chains[j], bc_chains[i])
+
+====
