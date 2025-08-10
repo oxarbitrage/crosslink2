@@ -19,12 +19,12 @@ Next ==
     ∨ ∃ n ∈ 1..BcNodes:
         ∧ bc_chains' = [bc_chains EXCEPT ![n] = Append(bc_chains[ChooseBestBcChain], [
             context_bft |-> ChooseContextBft,
-            hash |-> Max({t.hash : t ∈ BcTips}) + 1])]
+            hash |-> ChooseBestBcTip + 1])]
         ∧ UNCHANGED <<bft_chains, crosslink2_chains>>
     ∨ ∃ m ∈ 1..BftNodes:
         ∧ bft_chains' = [bft_chains EXCEPT ![m] = Append(bft_chains[ChooseBestBftChain], [
             headers_bc |-> PruneLasts(ChooseBcView, Sigma),
-            hash |-> Max({t.hash : t ∈ BcTips}) + 1])]
+            hash |-> ChooseBestBftTip + 1])]
         ∧ UNCHANGED <<bc_chains, crosslink2_chains>>
     ∨ ∃ c ∈ 1..CrossLink2Nodes:
         UNCHANGED <<bc_chains, bft_chains, crosslink2_chains>>

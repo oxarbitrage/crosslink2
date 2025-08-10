@@ -23,7 +23,10 @@ BftTip(i) == BftView(i)[Len(BftView(i))]
 BcTips == { BcTip(i) : i ∈ 1..BcNodes }
 BftTips == { BftTip(i) : i ∈ 1..BftNodes }
 
-ChooseContextBft == Max({t.hash : t \in BcTips})
+ChooseBestBcTip == Max({t.hash : t ∈ BcTips})
+ChooseBestBftTip == Max({t.hash : t ∈ BftTips})
+
+ChooseContextBft == Max({t.hash : t ∈ BcTips})
 
 ChooseBestBcChain == 
     CHOOSE i ∈ 1..BcNodes: Len(bc_chains[i]) = Max({Len(bc_chains[j]) : j ∈ 1..BcNodes})
