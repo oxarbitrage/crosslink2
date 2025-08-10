@@ -16,16 +16,18 @@ Init ==
     ∧ crosslink2_chains = [i ∈ 1..CrossLink2Nodes |-> <<CrossLink2GenesisBlock>>]
 
 Next == 
-    ∧ ∃ n ∈ 1..BcNodes: 
+    ∨ ∃ n ∈ 1..BcNodes:
         ∧ bc_chains' = [bc_chains EXCEPT ![n] = Append(bc_chains[ChooseBestBcChain], [
             context_bft |-> ChooseContextBft,
             hash |-> Max({t.hash : t ∈ BcTips}) + 1])]
-    ∧ ∃ m ∈ 1..BftNodes:
+        ∧ UNCHANGED <<bft_chains, crosslink2_chains>>
+    ∨ ∃ m ∈ 1..BftNodes:
         ∧ bft_chains' = [bft_chains EXCEPT ![m] = Append(bft_chains[ChooseBestBftChain], [
             headers_bc |-> PruneLasts(ChooseBcView, Sigma),
             hash |-> Max({t.hash : t ∈ BcTips}) + 1])]
-    ∧ ∃ c ∈ 1..CrossLink2Nodes:
-        UNCHANGED <<crosslink2_chains>>
+        ∧ UNCHANGED <<bc_chains, crosslink2_chains>>
+    ∨ ∃ c ∈ 1..CrossLink2Nodes:
+        UNCHANGED <<bc_chains, bft_chains, crosslink2_chains>>
 
 Spec == Init ∧ □[Next]_<< bc_chains, bft_chains, crosslink2_chains >>
 

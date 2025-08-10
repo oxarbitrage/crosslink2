@@ -12,7 +12,7 @@ VARIABLES bc_chains, bft_chains, crosslink2_chains
 
 BcGenesisBlock == [context_bft |-> 0, hash |-> 0]
 BftGenesisBlock == [headers_bc |-> <<>>, hash |-> 0]
-CrossLink2GenesisBlock == [locally_finalized_bc_chain |-> BcGenesisBlock]
+CrossLink2GenesisBlock == [fin |-> BcGenesisBlock]
 
 BcView(i) == bc_chains[i]
 BcTip(i) == BcView(i)[Len(BcView(i))]
