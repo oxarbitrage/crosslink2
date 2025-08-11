@@ -13,7 +13,7 @@ INSTANCE definitions
 Init == 
     ∧ bc_chains = [i ∈ 1..BcNodes |-> <<BcGenesisBlock>>]
     ∧ bft_chains = [i ∈ 1..BftNodes |-> <<BftGenesisBlock>>]
-    ∧ crosslink2_chains = [i ∈ 1..CrossLink2Nodes |-> <<CrossLink2GenesisBlock>>]
+    ∧ crosslink2_chains = [i ∈ 1..CrossLink2Nodes |-> CrossLink2GenesisBlock]
 
 Next == 
     ∨ ∃ n ∈ 1..BcNodes:
@@ -27,7 +27,9 @@ Next ==
             hash |-> ChooseBestBftTip + 1])]
         ∧ UNCHANGED <<bc_chains, crosslink2_chains>>
     ∨ ∃ c ∈ 1..CrossLink2Nodes:
-        UNCHANGED <<bc_chains, bft_chains, crosslink2_chains>>
+        ∧ crosslink2_chains' = [crosslink2_chains EXCEPT ![c] = [
+            fin |-> bc_chains[ChooseBestBcChain] ]]
+        ∧ UNCHANGED <<bc_chains, bft_chains>>
 
 Spec == Init ∧ □[Next]_<< bc_chains, bft_chains, crosslink2_chains >>
 
@@ -76,5 +78,13 @@ BcPrefixConsistency ==
 BcPrefixAgreement ==
     ∀ i ∈ 1..BcNodes:
         IsPrefix(PruneFirsts(bc_chains[i], Sigma), bc_chains[i])
+
+\* definition
+BcLinear(T, U) == IsPrefix(T, U)
+
+\* definition
+LocalFinalizationLinearity == [][
+    ∀ i ∈ 1..CrossLink2Nodes:
+        BcLinear(crosslink2_chains[i].fin, crosslink2_chains'[i].fin)]_crosslink2_chains
 
 ====

@@ -12,7 +12,7 @@ VARIABLES bc_chains, bft_chains, crosslink2_chains
 
 BcGenesisBlock == [context_bft |-> 0, hash |-> 0]
 BftGenesisBlock == [headers_bc |-> <<>>, hash |-> 0]
-CrossLink2GenesisBlock == [fin |-> BcGenesisBlock]
+CrossLink2GenesisBlock == [fin |-> <<BcGenesisBlock>>]
 
 BcView(i) == bc_chains[i]
 BcTip(i) == BcView(i)[Len(BcView(i))]
@@ -34,6 +34,9 @@ ChooseBestBcChain ==
 ChooseBestBftChain == 
     CHOOSE i ∈ 1..BftNodes: Len(bft_chains[i]) = Max({Len(bft_chains[j]) : j ∈ 1..BftNodes})
 
-ChooseBcView == BcView(CHOOSE i ∈ 1..BcNodes: TRUE) 
+ChooseBcView == BcView(CHOOSE i ∈ 1..BcNodes: TRUE)
+
+ChooseBestCrosslinkChain ==
+    CHOOSE i ∈ 1..CrossLink2Nodes: Len(crosslink2_chains[i]) = Max({Len(crosslink2_chains[j]) : j ∈ 1..CrossLink2Nodes})
 
 ====
