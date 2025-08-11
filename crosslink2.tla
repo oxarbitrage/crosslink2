@@ -37,6 +37,7 @@ Spec == Init ∧ □[Next]_<< bc_chains, bft_chains, crosslink2_chains >>
 
 BcChainsTypeCheck == bc_chains ∈ Seq(Seq([context_bft: Nat, hash: Nat]))
 BftChainsTypeCheck == bft_chains ∈ Seq(Seq([headers_bc: Seq([context_bft: Nat, hash: Nat]), hash: Nat]))
+CrossLink2ChainsTypeCheck == crosslink2_chains ∈ Seq([fin: Seq([context_bft: Nat, hash: Nat])])
 
 \* lemma
 BcLinearPrefix ==
