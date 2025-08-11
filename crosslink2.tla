@@ -82,9 +82,21 @@ BcPrefixAgreement ==
 \* definition
 BcLinear(T, U) == IsPrefix(T, U)
 
-\* definition
+\* definition (temporal property)
 LocalFinalizationLinearity == [][
     ∀ i ∈ 1..CrossLink2Nodes:
         BcLinear(crosslink2_chains[i].fin, crosslink2_chains'[i].fin)]_crosslink2_chains
+
+\* lemma
+\* TODO: need sigma
+LocalFinDepth ==
+    ∀ i ∈ 1..CrossLink2Nodes:
+        IsPrefix(crosslink2_chains[i].fin, bc_chains[ChooseBestBcChain])
+
+\* definition
+AssuredFinality ==
+    ∀ i, j ∈ 1..CrossLink2Nodes:
+        ∨ IsPrefix(crosslink2_chains[i].fin, crosslink2_chains[j].fin)
+        ∨ IsPrefix(crosslink2_chains[j].fin, crosslink2_chains[i].fin)
 
 ====
