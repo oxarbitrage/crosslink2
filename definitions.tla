@@ -10,10 +10,18 @@ VARIABLES bc_chains, bft_chains, crosslink2_chains
 
 ----
 
+(*
+The genesis blocks for the chains.
+*)
 BcGenesisBlock == [context_bft |-> 0, hash |-> 0]
 BftGenesisBlock == [headers_bc |-> <<>>, hash |-> 0]
 CrossLink2GenesisBlock == [fin |-> <<BcGenesisBlock>>]
 
+----
+
+(*
+The views and tips for the chains.
+*)
 BcView(i) == bc_chains[i]
 BcTip(i) == BcView(i)[Len(BcView(i))]
 
@@ -23,6 +31,11 @@ BftTip(i) == BftView(i)[Len(BftView(i))]
 BcTips == { BcTip(i) : i \in 1..BcNodes }
 BftTips == { BftTip(i) : i \in 1..BftNodes }
 
+----
+
+(*
+The best chain selection functions.
+*)
 ChooseBestBcTip == Max({t.hash : t \in BcTips})
 ChooseBestBftTip == Max({t.hash : t \in BftTips})
 
