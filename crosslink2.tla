@@ -17,14 +17,16 @@ Init ==
 
 Next == 
     \/ \E n \in 1..BcNodes:
-        /\ bc_chains' = [bc_chains EXCEPT ![n] = Append(bc_chains[ChooseBestBcChain], [
-            context_bft |-> ChooseContextBft,
-            hash |-> ChooseBestBcTip + 1])]
+        /\ bc_chains' = [bc_chains EXCEPT ![n] = Append(
+            bc_chains[ChooseBestBcChain], [
+                context_bft |-> ChooseContextBft,
+                hash |-> ChooseBestBcTip + 1])]
         /\ UNCHANGED <<bft_chains, crosslink2_chains>>
     \/ \E m \in 1..BftNodes:
-        /\ bft_chains' = [bft_chains EXCEPT ![m] = Append(bft_chains[ChooseBestBftChain], [
-            headers_bc |-> PruneLasts(ChooseBcView, Sigma),
-            hash |-> ChooseBestBftTip + 1])]
+        /\ bft_chains' = [bft_chains EXCEPT ![m] = Append(
+            bft_chains[ChooseBestBftChain], [
+                headers_bc |-> PruneLasts(ChooseBcView, Sigma),
+                hash |-> ChooseBestBftTip + 1])]
         /\ UNCHANGED <<bc_chains, crosslink2_chains>>
     \/ \E c \in 1..CrossLink2Nodes:
         /\ crosslink2_chains' = [crosslink2_chains EXCEPT ![c] = [
@@ -35,15 +37,22 @@ Spec == Init /\ [][Next]_<< bc_chains, bft_chains, crosslink2_chains >>
 
 ----
 
+(* Type checks *)
+
 BcChainsTypeCheck == bc_chains \in Seq(Seq([context_bft: Nat, hash: Nat]))
-BftChainsTypeCheck == bft_chains \in Seq(Seq([headers_bc: Seq([context_bft: Nat, hash: Nat]), hash: Nat]))
-CrossLink2ChainsTypeCheck == crosslink2_chains \in Seq([fin: Seq([context_bft: Nat, hash: Nat])])
+BftChainsTypeCheck == bft_chains \in 
+    Seq(Seq([headers_bc: Seq([context_bft: Nat, hash: Nat]), hash: Nat]))
+CrossLink2ChainsTypeCheck == crosslink2_chains \in 
+    Seq([fin: Seq([context_bft: Nat, hash: Nat])])
+
+----
 
 (* Lemma: Linear Prefix
 
-If A ⪯∗​ C and B ⪯∗ ​C then A ⪯⪰∗ ​B.
-
+   `^ If $A \preceq_{\star} C$ and $B \preceq_{\star} C$ then $A \preceq\hspace{-0.5em}\succeq_{\star} B$. ^'
 *)
+
+
 BcLinearPrefix ==
     \A i \in 1..BcNodes:
         \A k \in 2..Len(bc_chains[i]): bc_chains[i][k].hash >= bc_chains[i][k-1].hash
@@ -54,9 +63,9 @@ BftLinearPrefix ==
 
 (* Definition: Agreement on a view
 
-An execution of Π has Agreement on the view V ⦂ Node × Time → ∗-chain iff
-for all times t, u and all Π nodes i, j (potentially the same) such
-that i is honest at time t and j is honest at time u, we have Vit ​⪯⪰∗ ​Vju​.
+   `^ An execution of $\Pi$ has Agreement on the view $V : \typecolon Node \times Time \rightarrow \star\text{chain}$ iff
+for all times $t, u$ and all $\Pi$ nodes $i, j$ (potentially the same) such
+that $i$ is honest at time $t$ and $j$ is honest at time $u$, we have $V_i^t\, \preceq\hspace{-0.5em}\succeq_{\star} V_j^u$. ^'
 
 *)
 BcViewAgreement ==
@@ -69,18 +78,18 @@ BftViewAgreement ==
         \/ IsPrefix(bft_chains[i], bft_chains[j])
         \/ IsPrefix(bft_chains[j], bft_chains[i])
 
-(* Efficiently computable function
+(* Definition: Computable efficiently function
 
-∗bft-last-final ⦂ ∗bft-block → ∗bft-block ∪ {⊥}
+   `^ $\star\text{bftlastfinal} : \star\text{bftblock} \to \star\text{bftblock} \cup \{\bot\}$ ^'
 
 *)
 BftLastFinal(n) == bft_chains[n]
 
 (* Definition: Final agreement
 
-An execution of Π∗bft​ has Final Agreement iff for all ∗bft‑valid blocks 
-C in honest view at time t and C′ in honest view at time t′, we have
-∗bft-last-final(C) ⪯⪰∗bft ​∗bft-last-final(C′).
+   `^ An execution of $\Pi_{\star\text{bft}}$​ has Final Agreement iff for all $\start\text{bftvalid}$ blocks 
+$C$ in honest view at time $t$ and $C\prime$ in honest view at time $t\prime$, we have
+$\start\text{bftlastfinal}(C) \preceq\hspace{-0.5em}\succeq_{\start\text{bft}} \star\text{bftlastfinal}(C\prime)$. ^'
 
 *)
 BftFinalAgreement ==
@@ -90,10 +99,10 @@ BftFinalAgreement ==
 
 (* Definition: Prefix Consistency
 
-An execution of Π∗bc​ has Prefix Consistency at confirmation depth σ,
-iff for all times t ≤ u and all nodes i, j (potentially the same) such that
-i is honest at time t and j is honest at time u, we have that 
-chit​⌈∗bcσ ​⪯∗ bc​chju​.
+   `^ An execution of $\Pi_{\star\text{bc}}$​ has Prefix Consistency at confirmation depth $\sigma$,
+iff for all times $t \le u$ and all nodes $i, j$ (potentially the same) such that
+$i$ is honest at time $t$ and $j$ is honest at time $u$, we have that
+$\text{ch}_i^t \lceil_{\star\text{bc}}^\sigma\, \preceq_{\star\text{bc}} \text{ch}_j^u$​. ^'
 
 *)
 BcPrefixConsistency ==
