@@ -20,23 +20,24 @@ BcTip(i) == BcView(i)[Len(BcView(i))]
 BftView(i) == bft_chains[i]
 BftTip(i) == BftView(i)[Len(BftView(i))]
 
-BcTips == { BcTip(i) : i ∈ 1..BcNodes }
-BftTips == { BftTip(i) : i ∈ 1..BftNodes }
+BcTips == { BcTip(i) : i \in 1..BcNodes }
+BftTips == { BftTip(i) : i \in 1..BftNodes }
 
-ChooseBestBcTip == Max({t.hash : t ∈ BcTips})
-ChooseBestBftTip == Max({t.hash : t ∈ BftTips})
+ChooseBestBcTip == Max({t.hash : t \in BcTips})
+ChooseBestBftTip == Max({t.hash : t \in BftTips})
 
-ChooseContextBft == Max({t.hash : t ∈ BcTips})
+ChooseContextBft == Max({t.hash : t \in BcTips})
 
 ChooseBestBcChain == 
-    CHOOSE i ∈ 1..BcNodes: Len(bc_chains[i]) = Max({Len(bc_chains[j]) : j ∈ 1..BcNodes})
+    CHOOSE i \in 1..BcNodes: Len(bc_chains[i]) = Max({Len(bc_chains[j]) : j \in 1..BcNodes})
 
 ChooseBestBftChain == 
-    CHOOSE i ∈ 1..BftNodes: Len(bft_chains[i]) = Max({Len(bft_chains[j]) : j ∈ 1..BftNodes})
+    CHOOSE i \in 1..BftNodes: Len(bft_chains[i]) = Max({Len(bft_chains[j]) : j \in 1..BftNodes})
 
-ChooseBcView == BcView(CHOOSE i ∈ 1..BcNodes: TRUE)
+ChooseBcView == BcView(CHOOSE i \in 1..BcNodes: TRUE)
 
 ChooseBestCrosslinkChain ==
-    CHOOSE i ∈ 1..CrossLink2Nodes: Len(crosslink2_chains[i]) = Max({Len(crosslink2_chains[j]) : j ∈ 1..CrossLink2Nodes})
+    CHOOSE i \in 1..CrossLink2Nodes: Len(crosslink2_chains[i]) = 
+        Max({Len(crosslink2_chains[j]) : j \in 1..CrossLink2Nodes})
 
 ====

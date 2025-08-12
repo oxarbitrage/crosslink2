@@ -6,7 +6,7 @@ LOCAL INSTANCE Sequences
 
 Max(S) ==
     IF S = {} THEN 0
-    ELSE CHOOSE m ∈ S: ∀ x ∈ S: m ≥ x
+    ELSE CHOOSE m \in S: \A x \in S: m >= x
 
 PruneLasts(seq, n) ==
     IF n < 1 THEN <<>>
@@ -19,7 +19,7 @@ PruneFirsts(seq, n) ==
     ELSE SubSeq(seq, 1, Len(seq) - n)
 
 IsPrefix(p, s) ==
-    ∧ Len(p) <= Len(s)
-    ∧ ∀ i ∈ 1..Len(p): p[i] = s[i]
+    /\ Len(p) <= Len(s)
+    /\ \A i \in 1..Len(p): p[i] = s[i]
 
 ====

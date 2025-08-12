@@ -11,33 +11,33 @@ INSTANCE definitions
 ----
 
 Init == 
-    ∧ bc_chains = [i ∈ 1..BcNodes |-> <<BcGenesisBlock>>]
-    ∧ bft_chains = [i ∈ 1..BftNodes |-> <<BftGenesisBlock>>]
-    ∧ crosslink2_chains = [i ∈ 1..CrossLink2Nodes |-> CrossLink2GenesisBlock]
+    /\ bc_chains = [i \in 1..BcNodes |-> <<BcGenesisBlock>>]
+    /\ bft_chains = [i \in 1..BftNodes |-> <<BftGenesisBlock>>]
+    /\ crosslink2_chains = [i \in 1..CrossLink2Nodes |-> CrossLink2GenesisBlock]
 
 Next == 
-    ∨ ∃ n ∈ 1..BcNodes:
-        ∧ bc_chains' = [bc_chains EXCEPT ![n] = Append(bc_chains[ChooseBestBcChain], [
+    \/ \E n \in 1..BcNodes:
+        /\ bc_chains' = [bc_chains EXCEPT ![n] = Append(bc_chains[ChooseBestBcChain], [
             context_bft |-> ChooseContextBft,
             hash |-> ChooseBestBcTip + 1])]
-        ∧ UNCHANGED <<bft_chains, crosslink2_chains>>
-    ∨ ∃ m ∈ 1..BftNodes:
-        ∧ bft_chains' = [bft_chains EXCEPT ![m] = Append(bft_chains[ChooseBestBftChain], [
+        /\ UNCHANGED <<bft_chains, crosslink2_chains>>
+    \/ \E m \in 1..BftNodes:
+        /\ bft_chains' = [bft_chains EXCEPT ![m] = Append(bft_chains[ChooseBestBftChain], [
             headers_bc |-> PruneLasts(ChooseBcView, Sigma),
             hash |-> ChooseBestBftTip + 1])]
-        ∧ UNCHANGED <<bc_chains, crosslink2_chains>>
-    ∨ ∃ c ∈ 1..CrossLink2Nodes:
-        ∧ crosslink2_chains' = [crosslink2_chains EXCEPT ![c] = [
+        /\ UNCHANGED <<bc_chains, crosslink2_chains>>
+    \/ \E c \in 1..CrossLink2Nodes:
+        /\ crosslink2_chains' = [crosslink2_chains EXCEPT ![c] = [
             fin |-> bc_chains[ChooseBestBcChain] ]]
-        ∧ UNCHANGED <<bc_chains, bft_chains>>
+        /\ UNCHANGED <<bc_chains, bft_chains>>
 
-Spec == Init ∧ □[Next]_<< bc_chains, bft_chains, crosslink2_chains >>
+Spec == Init /\ [][Next]_<< bc_chains, bft_chains, crosslink2_chains >>
 
 ----
 
-BcChainsTypeCheck == bc_chains ∈ Seq(Seq([context_bft: Nat, hash: Nat]))
-BftChainsTypeCheck == bft_chains ∈ Seq(Seq([headers_bc: Seq([context_bft: Nat, hash: Nat]), hash: Nat]))
-CrossLink2ChainsTypeCheck == crosslink2_chains ∈ Seq([fin: Seq([context_bft: Nat, hash: Nat])])
+BcChainsTypeCheck == bc_chains \in Seq(Seq([context_bft: Nat, hash: Nat]))
+BftChainsTypeCheck == bft_chains \in Seq(Seq([headers_bc: Seq([context_bft: Nat, hash: Nat]), hash: Nat]))
+CrossLink2ChainsTypeCheck == crosslink2_chains \in Seq([fin: Seq([context_bft: Nat, hash: Nat])])
 
 (* Lemma: Linear Prefix
 
@@ -45,12 +45,12 @@ If A ⪯∗​ C and B ⪯∗ ​C then A ⪯⪰∗ ​B.
 
 *)
 BcLinearPrefix ==
-    ∀ i ∈ 1..BcNodes:
-        ∀ k ∈ 2..Len(bc_chains[i]): bc_chains[i][k].hash ≥ bc_chains[i][k-1].hash
+    \A i \in 1..BcNodes:
+        \A k \in 2..Len(bc_chains[i]): bc_chains[i][k].hash >= bc_chains[i][k-1].hash
 
 BftLinearPrefix ==
-    ∀ i ∈ 1..BftNodes:
-        ∀ k ∈ 2..Len(bft_chains[i]): bft_chains[i][k].hash ≥ bft_chains[i][k-1].hash
+    \A i \in 1..BftNodes:
+        \A k \in 2..Len(bft_chains[i]): bft_chains[i][k].hash >= bft_chains[i][k-1].hash
 
 (* Definition: Agreement on a view
 
@@ -60,14 +60,14 @@ that i is honest at time t and j is honest at time u, we have Vit ​⪯⪰∗ �
 
 *)
 BcViewAgreement ==
-    ∀ i, j ∈ 1..BcNodes:
-        ∨ IsPrefix(bc_chains[i], bc_chains[j])
-        ∨ IsPrefix(bc_chains[j], bc_chains[i])
+    \A i, j \in 1..BcNodes:
+        \/ IsPrefix(bc_chains[i], bc_chains[j])
+        \/ IsPrefix(bc_chains[j], bc_chains[i])
 
 BftViewAgreement ==
-    ∀ i, j ∈ 1..BftNodes:
-        ∨ IsPrefix(bft_chains[i], bft_chains[j])
-        ∨ IsPrefix(bft_chains[j], bft_chains[i])
+    \A i, j \in 1..BftNodes:
+        \/ IsPrefix(bft_chains[i], bft_chains[j])
+        \/ IsPrefix(bft_chains[j], bft_chains[i])
 
 (* Efficiently computable function
 
@@ -84,9 +84,9 @@ C in honest view at time t and C′ in honest view at time t′, we have
 
 *)
 BftFinalAgreement ==
-    ∀ i, j ∈ 1..BftNodes:
-        ∨ IsPrefix(BftLastFinal(i), BftLastFinal(j))
-        ∨ IsPrefix(BftLastFinal(j), BftLastFinal(i))
+    \A i, j \in 1..BftNodes:
+        \/ IsPrefix(BftLastFinal(i), BftLastFinal(j))
+        \/ IsPrefix(BftLastFinal(j), BftLastFinal(i))
 
 (* Definition: Prefix Consistency
 
@@ -97,7 +97,7 @@ chit​⌈∗bcσ ​⪯∗ bc​chju​.
 
 *)
 BcPrefixConsistency ==
-    ∀ i, j ∈ 1..BcNodes:
+    \A i, j \in 1..BcNodes:
         IsPrefix(PruneFirsts(bc_chains[i], Sigma), bc_chains[j])
 
 (* Definition: Prefix Agreement
@@ -107,7 +107,7 @@ has Agreement on the view(i,t) ↦ chit​⌈∗bcσ​.
 
 *)
 BcPrefixAgreement ==
-    ∀ i ∈ 1..BcNodes:
+    \A i \in 1..BcNodes:
         IsPrefix(PruneFirsts(bc_chains[i], Sigma), bc_chains[i])
 
 (* Definition: *-linear
@@ -126,7 +126,7 @@ of bc‑blocks finir ≤ t​ is bc‑linear.
 *)
 \* temporal property
 LocalFinalizationLinearity == [][
-    ∀ i ∈ 1..CrossLink2Nodes:
+    \A i \in 1..CrossLink2Nodes:
         BcLinear(crosslink2_chains[i].fin, crosslink2_chains'[i].fin)]_crosslink2_chains
 
 (* Lemma: Local fin‑depth
@@ -137,7 +137,7 @@ there exists a time r≤t such that finit​ ⪯ chir​⌈bcσ​.
 *)
 \* TODO: need sigma
 LocalFinDepth ==
-    ∀ i ∈ 1..CrossLink2Nodes:
+    \A i \in 1..CrossLink2Nodes:
         IsPrefix(crosslink2_chains[i].fin, bc_chains[ChooseBestBcChain])
 
 (* Definition: Assured Finality
@@ -148,8 +148,8 @@ and j is honest at time u, we have finit​ ⪯⪰bc ​finju​.
 
 *)
 AssuredFinality ==
-    ∀ i, j ∈ 1..CrossLink2Nodes:
-        ∨ IsPrefix(crosslink2_chains[i].fin, crosslink2_chains[j].fin)
-        ∨ IsPrefix(crosslink2_chains[j].fin, crosslink2_chains[i].fin)
+    \A i, j \in 1..CrossLink2Nodes:
+        \/ IsPrefix(crosslink2_chains[i].fin, crosslink2_chains[j].fin)
+        \/ IsPrefix(crosslink2_chains[j].fin, crosslink2_chains[i].fin)
 
 ====
