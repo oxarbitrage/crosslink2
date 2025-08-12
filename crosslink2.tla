@@ -111,8 +111,8 @@ BcPrefixConsistency ==
 
 (* Definition: Prefix Agreement
 
-An execution of Π∗bc​ has Prefix Agreement at confirmation depth σ iff it
-has Agreement on the view(i,t) ↦ chit​⌈∗bcσ​.
+   `^ An execution of $\Pi_{\star\text{bc}}$​ has Prefix Agreement at confirmation depth $\sigma$ iff it
+has Agreement on the view $(i,t) \mapsto \text{ch}_i^t \lceil_{\star\text{bc}}^\sigma$.
 
 *)
 BcPrefixAgreement ==
@@ -121,39 +121,37 @@ BcPrefixAgreement ==
 
 (* Definition: *-linear
 
-A function S ⦂ I → ∗-block is ∗‑linear iff for every t,u ⦂ I where
-t ≤ u we have S(t) ⪯∗ ​S(u)
+    `^ A function $S : I \to \star\text{block}$ is *-linear iff for every $t, u \in I$ where
+$t \le u$ we have $S(t) \preceq_{\star} S(u)$ ^'
 
 *)
 BcLinear(T, U) == IsPrefix(T, U)
 
 (* Definition: Local finalization linearity
 
-Node i has Local finalization linearity up to time t iff the time series
-of bc‑blocks finir ≤ t​ is bc‑linear.
+   `^ Node $i$ has Local finalization linearity up to time $t$ iff the time series
+of $\star\text{bc}$-blocks $\text{fin}_i^{r \le t}$ is $\star\text{bc}$-linear. ^'
 
 *)
-\* temporal property
 LocalFinalizationLinearity == [][
     \A i \in 1..CrossLink2Nodes:
         BcLinear(crosslink2_chains[i].fin, crosslink2_chains'[i].fin)]_crosslink2_chains
 
 (* Lemma: Local fin‑depth
 
-In any execution of Crosslink 2, for any node i that is honest at time t,
-there exists a time r≤t such that finit​ ⪯ chir​⌈bcσ​.
+   `^ In any execution of Crosslink 2, for any node $i$ that is honest at time $t$,
+there exists a time $r \le t$ such that $\text{fin}_i \preceq \text{ch}_i^r\lceil_{\star\text{bc}}^\sigma$ ^'
 
 *)
-\* TODO: need sigma
 LocalFinDepth ==
     \A i \in 1..CrossLink2Nodes:
         IsPrefix(crosslink2_chains[i].fin, bc_chains[ChooseBestBcChain])
 
 (* Definition: Assured Finality
 
-An execution of Crosslink 2 has Assured Finality iff for all times t, u
-and all nodes i, j (potentially the same) such that i is honest at time t
-and j is honest at time u, we have finit​ ⪯⪰bc ​finju​.
+   `^ An execution of Crosslink 2 has Assured Finality iff for all times $t, u$
+and all nodes $i, j$ (potentially the same) such that $i$ is honest at time $t$
+and $j$ is honest at time $u$, we have $\text{fin}_i^t \preceq\hspace{-0.5em}\succeq_{bc} \text{fin}_j^u$. ^'
 
 *)
 AssuredFinality ==
