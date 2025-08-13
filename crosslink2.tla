@@ -32,6 +32,7 @@ Next ==
         /\ crosslink2_chains' = [crosslink2_chains EXCEPT ![c] = [
             fin |-> PruneFirsts(bc_chains[ChooseBestBcChain], Sigma) ]]
         /\ UNCHANGED <<bc_chains, bft_chains>>
+    \/ UNCHANGED <<bc_chains, bft_chains, crosslink2_chains>>
 
 Spec == Init /\ [][Next]_<< bc_chains, bft_chains, crosslink2_chains >>
 
