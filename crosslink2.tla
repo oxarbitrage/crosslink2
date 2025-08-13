@@ -30,7 +30,7 @@ Next ==
         /\ UNCHANGED <<bc_chains, crosslink2_chains>>
     \/ \E c \in 1..CrossLink2Nodes:
         /\ crosslink2_chains' = [crosslink2_chains EXCEPT ![c] = [
-            fin |-> bc_chains[ChooseBestBcChain] ]]
+            fin |-> PruneFirsts(bc_chains[ChooseBestBcChain], Sigma) ]]
         /\ UNCHANGED <<bc_chains, bft_chains>>
 
 Spec == Init /\ [][Next]_<< bc_chains, bft_chains, crosslink2_chains >>

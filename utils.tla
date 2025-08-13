@@ -16,7 +16,7 @@ PruneLasts(seq, n) ==
 PruneFirsts(seq, n) ==
     IF n < 1 THEN <<>>
     ELSE IF n >= Len(seq) THEN seq
-    ELSE SubSeq(seq, 1, Len(seq) - n)
+    ELSE SubSeq(seq, 1, Len(seq) - n + 1)
 
 IsPrefix(p, s) ==
     /\ Len(p) <= Len(s)
