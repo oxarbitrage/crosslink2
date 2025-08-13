@@ -53,4 +53,11 @@ ChooseBestCrosslinkChain ==
     CHOOSE i \in 1..CrossLink2Nodes: Len(crosslink2_chains[i]) = 
         Max({Len(crosslink2_chains[j]) : j \in 1..CrossLink2Nodes})
 
+(*
+Definition: Computable efficiently function
+
+`^ $\star\text{bftlastfinal} : \star\text{bftblock} \to \star\text{bftblock} \cup \{\bot\}$ ^'
+*)
+BftLastFinal(n) == bft_chains[n]
+
 ====

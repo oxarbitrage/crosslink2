@@ -56,12 +56,20 @@ Lemma: Linear Prefix
 *)
 
 BcLinearPrefix ==
-    \A i \in 1..BcNodes:
-        \A k \in 2..Len(bc_chains[i]): bc_chains[i][k].hash >= bc_chains[i][k-1].hash
+    \A a, b, c \in 1..BcNodes:
+        LET A == bc_chains[a]
+            B == bc_chains[b]
+            C == bc_chains[c]
+        IN IsPrefix(A, C) /\ IsPrefix(B, C) =>
+            IsPrefix(A, B) \/ IsPrefix(B, A)
 
 BftLinearPrefix ==
-    \A i \in 1..BftNodes:
-        \A k \in 2..Len(bft_chains[i]): bft_chains[i][k].hash >= bft_chains[i][k-1].hash
+    \A a, b, c \in 1..BftNodes:
+        LET A == bft_chains[a]
+            B == bft_chains[b]
+            C == bft_chains[c]
+        IN IsPrefix(A, C) /\ IsPrefix(B, C) =>
+            IsPrefix(A, B) \/ IsPrefix(B, A)
 
 (*
 Definition: Agreement on a view
@@ -79,13 +87,6 @@ BftViewAgreement ==
     \A i, j \in 1..BftNodes:
         \/ IsPrefix(bft_chains[i], bft_chains[j])
         \/ IsPrefix(bft_chains[j], bft_chains[i])
-
-(*
-Definition: Computable efficiently function
-
-`^ $\star\text{bftlastfinal} : \star\text{bftblock} \to \star\text{bftblock} \cup \{\bot\}$ ^'
-*)
-BftLastFinal(n) == bft_chains[n]
 
 (* 
 Definition: Final agreement
@@ -109,7 +110,8 @@ $\text{ch}_i^t \lceil_{\star\text{bc}}^\sigma\, \preceq_{\star\text{bc}} \text{c
 *)
 BcPrefixConsistency ==
     \A i, j \in 1..BcNodes:
-        IsPrefix(PruneFirsts(bc_chains[i], Sigma), bc_chains[j])
+        Len(bc_chains[i]) <= Len(bc_chains[j]) =>
+            IsPrefix(PruneFirsts(bc_chains[i], Sigma), bc_chains[j])
 
 (*
 Definition: Prefix Agreement
