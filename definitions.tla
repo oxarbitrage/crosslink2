@@ -28,6 +28,8 @@ HonestBftNodes == 1..BftNodes \ ByzBft
 BftAllNodes == 1..BftNodes
 BcAllNodes == 1..BcNodes
 
+----
+
 (*
 Choose the best BC chain (the longest one).
 *)
@@ -35,7 +37,7 @@ BestBcChainIdx ==
     CHOOSE i \in BcAllNodes: 
         Len(bc_chains[i]) = Max({Len(bc_chains[j]) : j \in BcAllNodes})
 
-
+----
 
 (*
 The number of nodes supporting the same chain as node i.
