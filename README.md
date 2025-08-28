@@ -37,6 +37,10 @@ We model the Crosslink2 protocol and its subprotocols as a state machine with th
 The TLA⁺ specification is defined in [crosslink2.tla](crosslink2.tla).
 A generated PDF version is available at [crosslink2.pdf](crosslink2.pdf).
 
+## Model checking
+
+You can run TLC to check invariants and properties of the specification. This is a non-terminating model, so you might want to stop TLC manually after a while.
+
 ## Contributing
 
 Feedback, bug reports, and pull requests are welcome!  
