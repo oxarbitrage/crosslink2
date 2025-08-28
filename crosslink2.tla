@@ -21,7 +21,7 @@ HonestBc ==
         LET
             base == bc_chains[BestBcChainIdx]
             bft  == bft_chains[BestBftChainIdx]
-            tip  == IF Len(base) = 0 THEN 0 ELSE base[Len(base)].hash
+            tip  == base[Len(base)].hash
             next == tip + 1 IN
         /\ bc_chains' = [bc_chains EXCEPT ![n] = Append(base, [
             context_bft |-> bft[Len(bft)].hash,
@@ -33,7 +33,7 @@ HonestBft ==
         LET
             base == bft_chains[BestBftChainIdx]
             bc   == bc_chains[BestBcChainIdx]
-            tip  == IF Len(base) = 0 THEN 0 ELSE base[Len(base)].hash
+            tip  == base[Len(base)].hash
             next == tip + 1
             hdrs == PruneLasts(bc, Sigma) IN
         /\ bft_chains' = [bft_chains EXCEPT ![n] = Append(base, [
@@ -46,7 +46,7 @@ ByzantineBft ==
         LET
             base == bft_chains[BestBftChainIdx]
             bc   == bc_chains[BestBcChainIdx]
-            tip  == IF Len(base) = 0 THEN 0 ELSE base[Len(base)].hash
+            tip  == base[Len(base)].hash
             \* Byzantine node can create an arbitrary faulty block within a range
             byz  == tip + (CHOOSE inc \in 2..10 : TRUE)
             hdrs == PruneLasts(bc, Sigma) IN

@@ -22,20 +22,20 @@ CrossLink2GenesisBlock == [fin |-> <<BcGenesisBlock>>]
 ----
 
 (*
+Convenient sets
+*)
+HonestBftNodes == 1..BftNodes \ ByzBft
+BftAllNodes == 1..BftNodes
+BcAllNodes == 1..BcNodes
+
+(*
 Choose the best BC chain (the longest one).
 *)
 BestBcChainIdx ==
-    CHOOSE i \in 1..BcNodes: Len(bc_chains[i]) = Max({Len(bc_chains[j]) : j \in 1..BcNodes})
+    CHOOSE i \in BcAllNodes: 
+        Len(bc_chains[i]) = Max({Len(bc_chains[j]) : j \in BcAllNodes})
 
-(*
-The subset of honest BFT nodes.
-*)
-HonestBftNodes == 1..BftNodes \ ByzBft
 
-(*
-The set of all BFT nodes.
-*)
-BftAllNodes == 1..BftNodes
 
 (*
 The number of nodes supporting the same chain as node i.
@@ -43,32 +43,26 @@ The number of nodes supporting the same chain as node i.
 BftSupport(i) == Cardinality({ j \in BftAllNodes : bft_chains[j] = bft_chains[i] })
 
 (*
-BFT Assumptions
+Byzantine classic fault tolerance threshold condition
 *)
 BftThresholdOK == BftNodes >= 3 * Cardinality(ByzBft) + 1
 
 (*
 Choose the best BFT chain (the longest one with the most support).
+
+- Lmax = maximum length of all BFT chains
+- S = set of nodes having the longest chains
+- supMax = maximum support among the longest chains
+- T = set of nodes having the longest chains with the maximum support
 *)
 BestBftChainIdx ==
     LET
-        \* The maximum length of all BFT chains
         Lmax   == Max({ Len(bft_chains[k]) : k \in BftAllNodes })
-        \* The set of nodes having the longest chains
         S      == { i \in BftAllNodes : Len(bft_chains[i]) = Lmax }
-        \* The maximum support among the longest chains
         supMax == Max({ BftSupport(k) : k \in S })
-        \* The set of nodes having the longest chains with the maximum support
         T      == { i \in S : BftSupport(i) = supMax }
     IN
         CHOOSE i \in T : TRUE
-
-(*
-Choose the best Crosslink chain (the longest one).
-*)
-ChooseBestCrosslinkChain ==
-    CHOOSE i \in 1..CrossLink2Nodes: Len(crosslink2_chains[i]) = 
-        Max({Len(crosslink2_chains[j]) : j \in 1..CrossLink2Nodes})
 
 (*
 Definition: Computable efficiently function
