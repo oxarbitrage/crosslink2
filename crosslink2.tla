@@ -2,6 +2,7 @@
 EXTENDS TLC, Naturals, Sequences, utils
 
 CONSTANTS BcNodes, BftNodes, CrossLink2Nodes
+CONSTANTS ByzBft, ByzCl
 CONSTANTS Sigma, L
 
 VARIABLES bc_chains, bft_chains, crosslink2_chains
@@ -15,24 +16,58 @@ Init ==
     /\ bft_chains = [i \in 1..BftNodes |-> <<BftGenesisBlock>>]
     /\ crosslink2_chains = [i \in 1..CrossLink2Nodes |-> CrossLink2GenesisBlock]
 
-Next == 
-    \/ \E n \in 1..BcNodes:
-        /\ bc_chains' = [bc_chains EXCEPT ![n] = Append(
-            bc_chains[ChooseBestBcChain], [
-                context_bft |-> ChooseContextBft,
-                hash |-> ChooseBestBcTip + 1])]
+HonestBc ==
+    \E n \in 1..BcNodes:
+        LET
+            base == bc_chains[BestBcChainIdx]
+            bft  == bft_chains[BestBftChainIdx]
+            tip  == IF Len(base) = 0 THEN 0 ELSE base[Len(base)].hash
+            next == tip + 1 IN
+        /\ bc_chains' = [bc_chains EXCEPT ![n] = Append(base, [
+            context_bft |-> bft[Len(bft)].hash,
+            hash |-> next])]
         /\ UNCHANGED <<bft_chains, crosslink2_chains>>
-    \/ \E m \in 1..BftNodes:
-        /\ bft_chains' = [bft_chains EXCEPT ![m] = Append(
-            bft_chains[ChooseBestBftChain], [
-                headers_bc |-> PruneLasts(ChooseBcView, Sigma),
-                hash |-> ChooseBestBftTip + 1])]
+
+HonestBft ==
+    \E n \in 1..BftNodes:
+        LET
+            base == bft_chains[BestBftChainIdx]
+            bc   == bc_chains[BestBcChainIdx]
+            tip  == IF Len(base) = 0 THEN 0 ELSE base[Len(base)].hash
+            next == tip + 1
+            hdrs == PruneLasts(bc, Sigma) IN
+        /\ bft_chains' = [bft_chains EXCEPT ![n] = Append(base, [
+                headers_bc |-> hdrs,
+                hash |-> next])]
         /\ UNCHANGED <<bc_chains, crosslink2_chains>>
-    \/ \E c \in 1..CrossLink2Nodes:
-        /\ crosslink2_chains' = [crosslink2_chains EXCEPT ![c] = [
-            fin |-> PruneFirsts(bc_chains[ChooseBestBcChain], Sigma) ]]
+
+ByzantineBft ==
+    \E n \in ByzBft:
+        LET
+            base == bft_chains[BestBftChainIdx]
+            bc   == bc_chains[BestBcChainIdx]
+            tip  == IF Len(base) = 0 THEN 0 ELSE base[Len(base)].hash
+            \* Byzantine node can create an arbitrary faulty block within a range
+            byz  == tip + (CHOOSE inc \in 2..10 : TRUE)
+            hdrs == PruneLasts(bc, Sigma) IN
+        /\ bft_chains' = [ bft_chains EXCEPT ![n] = Append(base, [
+            headers_bc |-> hdrs,
+            hash       |-> byz ])]
+        /\ UNCHANGED << bc_chains, crosslink2_chains >>
+
+HonestCrosslink ==
+    \E n \in 1..CrossLink2Nodes:
+        LET
+            fin == PruneFirsts(bc_chains[BestBcChainIdx], Sigma) IN
+        /\ crosslink2_chains' = [crosslink2_chains EXCEPT ![n] = [fin |-> fin ]]
         /\ UNCHANGED <<bc_chains, bft_chains>>
     \/ UNCHANGED <<bc_chains, bft_chains, crosslink2_chains>>
+
+Next ==
+    \/ HonestBc
+    \/ HonestBft
+    \/ HonestCrosslink
+    \/ ByzantineBft
 
 Spec == Init /\ [][Next]_<< bc_chains, bft_chains, crosslink2_chains >>
 
@@ -49,6 +84,12 @@ CrossLink2ChainsTypeCheck == crosslink2_chains \in
     Seq([fin: Seq([context_bft: Nat, hash: Nat])])
 
 ----
+
+(*
+Assumptions
+*)
+ASSUME BftThresholdOK
+
 
 (*
 Lemma: Linear Prefix
@@ -85,7 +126,7 @@ BcViewAgreement ==
         \/ IsPrefix(bc_chains[j], bc_chains[i])
 
 BftViewAgreement ==
-    \A i, j \in 1..BftNodes:
+    \A i, j \in HonestBftNodes:
         \/ IsPrefix(bft_chains[i], bft_chains[j])
         \/ IsPrefix(bft_chains[j], bft_chains[i])
 
@@ -97,7 +138,7 @@ $C$ in honest view at time $t$ and $C\prime$ in honest view at time $t\prime$, w
 $\start\text{bftlastfinal}(C) \preceq\hspace{-0.5em}\succeq_{\start\text{bft}} \star\text{bftlastfinal}(C\prime)$. ^'
 *)
 BftFinalAgreement ==
-    \A i, j \in 1..BftNodes:
+    \A i, j \in HonestBftNodes:
         \/ IsPrefix(BftLastFinal(i), BftLastFinal(j))
         \/ IsPrefix(BftLastFinal(j), BftLastFinal(i))
 
@@ -150,7 +191,7 @@ there exists a time $r \le t$ such that $\text{fin}_i \preceq \text{ch}_i^r\lcei
 *)
 LocalFinDepth ==
     \A i \in 1..CrossLink2Nodes:
-        IsPrefix(crosslink2_chains[i].fin, bc_chains[ChooseBestBcChain])
+        IsPrefix(crosslink2_chains[i].fin, bc_chains[BestBcChainIdx])
 
 (*
 Definition: Assured Finality

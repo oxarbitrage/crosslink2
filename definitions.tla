@@ -1,9 +1,11 @@
 ---- MODULE definitions ----
 LOCAL INSTANCE Integers
 LOCAL INSTANCE Sequences
+LOCAL INSTANCE FiniteSets
 LOCAL INSTANCE utils
 
 CONSTANTS BcNodes, BftNodes, CrossLink2Nodes
+CONSTANTS ByzBft, ByzCl
 CONSTANTS Sigma, L
 
 VARIABLES bc_chains, bft_chains, crosslink2_chains
@@ -20,35 +22,50 @@ CrossLink2GenesisBlock == [fin |-> <<BcGenesisBlock>>]
 ----
 
 (*
-The views and tips for the chains.
+Choose the best BC chain (the longest one).
 *)
-BcView(i) == bc_chains[i]
-BcTip(i) == BcView(i)[Len(BcView(i))]
-
-BftView(i) == bft_chains[i]
-BftTip(i) == BftView(i)[Len(BftView(i))]
-
-BcTips == { BcTip(i) : i \in 1..BcNodes }
-BftTips == { BftTip(i) : i \in 1..BftNodes }
-
-----
-
-(*
-The best chain selection functions.
-*)
-ChooseBestBcTip == Max({t.hash : t \in BcTips})
-ChooseBestBftTip == Max({t.hash : t \in BftTips})
-
-ChooseContextBft == Max({t.hash : t \in BcTips})
-
-ChooseBestBcChain == 
+BestBcChainIdx ==
     CHOOSE i \in 1..BcNodes: Len(bc_chains[i]) = Max({Len(bc_chains[j]) : j \in 1..BcNodes})
 
-ChooseBestBftChain == 
-    CHOOSE i \in 1..BftNodes: Len(bft_chains[i]) = Max({Len(bft_chains[j]) : j \in 1..BftNodes})
+(*
+The subset of honest BFT nodes.
+*)
+HonestBftNodes == 1..BftNodes \ ByzBft
 
-ChooseBcView == BcView(CHOOSE i \in 1..BcNodes: TRUE)
+(*
+The set of all BFT nodes.
+*)
+BftAllNodes == 1..BftNodes
 
+(*
+The number of nodes supporting the same chain as node i.
+*)
+BftSupport(i) == Cardinality({ j \in BftAllNodes : bft_chains[j] = bft_chains[i] })
+
+(*
+BFT Assumptions
+*)
+BftThresholdOK == BftNodes >= 3 * Cardinality(ByzBft) + 1
+
+(*
+Choose the best BFT chain (the longest one with the most support).
+*)
+BestBftChainIdx ==
+    LET
+        \* The maximum length of all BFT chains
+        Lmax   == Max({ Len(bft_chains[k]) : k \in BftAllNodes })
+        \* The set of nodes having the longest chains
+        S      == { i \in BftAllNodes : Len(bft_chains[i]) = Lmax }
+        \* The maximum support among the longest chains
+        supMax == Max({ BftSupport(k) : k \in S })
+        \* The set of nodes having the longest chains with the maximum support
+        T      == { i \in S : BftSupport(i) = supMax }
+    IN
+        CHOOSE i \in T : TRUE
+
+(*
+Choose the best Crosslink chain (the longest one).
+*)
 ChooseBestCrosslinkChain ==
     CHOOSE i \in 1..CrossLink2Nodes: Len(crosslink2_chains[i]) = 
         Max({Len(crosslink2_chains[j]) : j \in 1..CrossLink2Nodes})

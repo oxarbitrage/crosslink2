@@ -18,17 +18,19 @@ The goal is to create a simple yet expressive model of the Crosslink2 protocol t
 
 We model the Crosslink2 protocol and its subprotocols as a state machine with the following components:
 
-- `bc_chains`, `bft_chains`, and `crosslink2_chains` are sequences of chains. At any execution time `t` and for each node `i`, we have a local chain for that node. For example, `bft_chains[i]` represents the BFT chain of node `i` at time `t`. Chains are updated as the protocol executes.
+- `bc_chains`, `bft_chains`, and `crosslink2_chains` are sequences of chains. At any execution time `t` and for each node `i`, we have a local chain for that node. For example, `bft_chains[i]` represents the BFT chain of node `i` at current time `t`. Chains are updated as the protocol executes.
 
 - Initialization: At `t = 0`, each chain for each node starts with the genesis block of its protocol. For example: `bft_chains[i] = <<bft_genesis_block>>`.
 
 - State transitions (`t > 0`): One or more of the following may occur:
 
-  - A BC-node updates its `bc_chain` to the best chain and appends a `bc-block`.
+  - An honest BC-node updates its `bc_chain` to the best chain and appends a `bc-block`.
 
-  - A BFT-node updates its `bft_chain` to the best chain and appends a `bft-block`.
+  - An honest BFT-node updates its `bft_chain` to the best chain and appends a `bft-block`.
 
-  - A Crosslink-node updates its view to a new finalized `fin` chain.
+  - A byzantine BFT-node may update its `bft_chain` to a valid chain and append a faulty `bft-block`.
+
+  - An honest Crosslink-node updates its view to a new finalized `fin` chain.
 
   - The state remains unchanged.
 
