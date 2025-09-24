@@ -17,7 +17,7 @@ The genesis blocks for the chains.
 *)
 BcGenesisBlock == [context_bft |-> 0, hash |-> 0]
 BftGenesisBlock == [headers_bc |-> <<>>, hash |-> 0]
-CrossLink2GenesisBlock == [fin |-> <<BcGenesisBlock>>]
+CrossLink2GenesisBlock == [fin |-> <<BcGenesisBlock>>, ba |-> <<BcGenesisBlock>>]
 
 ----
 
@@ -73,4 +73,19 @@ Definition: Computable efficiently function
 *)
 BftLastFinal(n) == bft_chains[n]
 
+(*
+Definition: Locally bounded‑available chain
+
+`^ Define the locally bounded‑available chain on node $i$ for bc‑confirmation‑depth $μ$, as $$
+(\localba_\mu)_i^t = \begin{cases}
+  \ch_i^t \trunc_{\bc}^\mu, &\if \localfin_i^t \preceq \ch_i^t \trunc_{\bc}^\mu \\
+  \localfin_i^t, &\otherwise
+\end{cases}
+$$ ^'
+*)
+LocalBa(fin, bc) ==
+    IF IsPrefix(fin, PruneFirsts(bc, Sigma)) THEN
+        PruneFirsts(bc, Sigma)
+    ELSE
+        fin
 ====

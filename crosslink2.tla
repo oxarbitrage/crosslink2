@@ -58,8 +58,12 @@ ByzantineBft ==
 HonestCrosslink ==
     \E n \in 1..CrossLink2Nodes:
         LET
-            fin == PruneFirsts(bc_chains[BestBcChainIdx], Sigma) IN
-        /\ crosslink2_chains' = [crosslink2_chains EXCEPT ![n] = [fin |-> fin ]]
+            fin == PruneFirsts(bc_chains[BestBcChainIdx], Sigma)
+            ba == LocalBa(fin, bc_chains[BestBcChainIdx])
+            IN
+        /\ crosslink2_chains' = [crosslink2_chains EXCEPT ![n] = [
+            fin |-> fin,
+            ba |-> ba ]]
         /\ UNCHANGED <<bc_chains, bft_chains>>
     \/ UNCHANGED <<bc_chains, bft_chains, crosslink2_chains>>
 
@@ -81,7 +85,7 @@ BcChainsTypeCheck == bc_chains \in Seq(Seq([context_bft: Nat, hash: Nat]))
 BftChainsTypeCheck == bft_chains \in 
     Seq(Seq([headers_bc: Seq([context_bft: Nat, hash: Nat]), hash: Nat]))
 CrossLink2ChainsTypeCheck == crosslink2_chains \in 
-    Seq([fin: Seq([context_bft: Nat, hash: Nat])])
+    Seq([fin: Seq([context_bft: Nat, hash: Nat]), ba: Seq([context_bft: Nat, hash: Nat])])
 
 ----
 
@@ -204,5 +208,14 @@ AssuredFinality ==
     \A i, j \in 1..CrossLink2Nodes:
         \/ IsPrefix(crosslink2_chains[i].fin, crosslink2_chains[j].fin)
         \/ IsPrefix(crosslink2_chains[j].fin, crosslink2_chains[i].fin)
+
+(*
+Theorem: Ledger prefix property
+
+`^ For any node $i$ that is honest at time $t$, and any confirmation depth $μ$, $\localfin_i^t \preceq (\localba_\mu)_i^t$ ^'
+*)
+LedgerPrefixProperty ==
+    \A i \in 1..CrossLink2Nodes:
+        IsPrefix(crosslink2_chains[i].fin, crosslink2_chains[i].ba)
 
 ====
