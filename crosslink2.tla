@@ -163,7 +163,7 @@ BcPrefixConsistency ==
 Definition: Prefix Agreement
 
 `^ An execution of $\Pi_{\star\text{bc}}$​ has Prefix Agreement at confirmation depth $\sigma$ iff it
-has Agreement on the view $(i,t) \mapsto \text{ch}_i^t \lceil_{\star\text{bc}}^\sigma$.
+has Agreement on the view $(i,t) \mapsto \text{ch}_i^t \lceil_{\star\text{bc}}^\sigma$. ^'
 *)
 BcPrefixAgreement ==
     \A i \in 1..BcNodes:
@@ -217,5 +217,16 @@ Theorem: Ledger prefix property
 LedgerPrefixProperty ==
     \A i \in 1..CrossLink2Nodes:
         IsPrefix(crosslink2_chains[i].fin, crosslink2_chains[i].ba)
+
+(*
+Lemma: Local ba‑depth
+
+`^ In any execution of Crosslink 2, for any confirmation depth $\mu \leq \sigma$ and any node $i$ that is honest at time $t$,
+there exists a time $r \leq t$ such that $(\mathsf{ba}_\mu)_i^t \preceq_\mathsf{bc} \mathsf{ch}_i^r \lceil_\mathsf{bc}^\mu$. ^'
+*)
+LocalBaDepth == [][
+    \A i \in 1..CrossLink2Nodes:
+        IsPrefix(crosslink2_chains'[i].ba, PruneFirsts(bc_chains[BestBcChainIdx], Sigma))
+]_crosslink2_chains
 
 ====
