@@ -76,12 +76,15 @@ BftLastFinal(n) == bft_chains[n]
 (*
 Definition: Locally bounded‑available chain
 
-`^ Define the locally bounded‑available chain on node $i$ for bc‑confirmation‑depth $μ$, as $$
-(\localba_\mu)_i^t = \begin{cases}
-  \ch_i^t \trunc_{\bc}^\mu, &\if \localfin_i^t \preceq \ch_i^t \trunc_{\bc}^\mu \\
-  \localfin_i^t, &\otherwise
-\end{cases}
-$$ ^'
+`^ Define the locally bounded‑available chain on node $i$ for bc‑confirmation‑depth $\mu$, as
+$$
+(\mathsf{ba}_\mu)_i^t = \left\{
+  \begin{array}{lr}
+    \mathsf{ch}_i^t \lceil_\mathsf{bc}^\mu,\quad\text{if } \mathsf{fin}_i^t \preceq \mathsf{ch}_i^t \lceil_\mathsf{bc}^\mu \\
+    \mathsf{fin}_i^t,\qquad\text{otherwise}
+  \end{array}
+$$
+^'
 *)
 LocalBa(fin, bc) ==
     IF IsPrefix(fin, PruneFirsts(bc, Sigma)) THEN

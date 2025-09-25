@@ -212,7 +212,7 @@ AssuredFinality ==
 (*
 Theorem: Ledger prefix property
 
-`^ For any node $i$ that is honest at time $t$, and any confirmation depth $μ$, $\localfin_i^t \preceq (\localba_\mu)_i^t$ ^'
+`^ For any node $i$ that is honest at time $t$, and any confirmation depth $\mu$, $\mathsf{fin}_i^t \preceq (\mathsf{ba}_\mu)_i^t$ ^'
 *)
 LedgerPrefixProperty ==
     \A i \in 1..CrossLink2Nodes:
