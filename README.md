@@ -2,7 +2,7 @@
 
 A TLA⁺ specification of the Crosslink2 protocol and its subprotocols, modeled as a state machine.
 
-📖 [Read the full TFL book](https://electric-coin-company.github.io/tfl-book/)
+📖 [Read the full TFL book](https://daira.github.io/tfl-book/)
 
 ## Disclamer
 
